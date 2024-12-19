@@ -13,14 +13,6 @@ tStart = tic;
 %% Calculation of intensity, phase & soft bit tables for each Jones matrix
 nbNetUpJonesMat = p.rx.nbDetectedCodes*p.rx.nbOvsReflectors;
 
-% if strcmpi(p.env,'model')
-%     if p.fibre.ExcitedSegmentFlag %Add artificial attenuation to emulate fading at perturbation location
-%         locationIdxTime = cat(1, (0:p.rx.nbDetectedCodes-1)*p.rx.nbOvsReflectors+2*p.fibre.ExcitedSegmentIdx-1,(0:p.rx.nbDetectedCodes-1)*p.rx.nbOvsReflectors+2*p.fibre.ExcitedSegmentIdx) ;
-%         locationTabInTime = reshape( cat(1,locationIdxTime-2,locationIdxTime,locationIdxTime+2), 1, [])  ;
-%         p.HiTab(:,locationTabInTime) = p.fibre.artificialFading*p.HiTab(:,locationTabInTime);
-%     end
-% end
-
 %Computing Norm and Determinant of all estimated matrices
 intJonesTab = 0.5*sum(p.HiTab(:,1:nbNetUpJonesMat).*conj(p.HiTab(:,1:nbNetUpJonesMat)),1); 
 intJonesTab = reshape(intJonesTab,p.rx.nbOvsReflectors,p.rx.nbDetectedCodes);
