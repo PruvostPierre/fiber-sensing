@@ -5,7 +5,7 @@ function [gCode,p]  = genGolayCode(p)
 %
 % Authors: 
 % Original code by S. Guerrier, C. Dorize & E. Awwad - 2022
-% Modified version by E. Awwad - 2024 elie.awwad@telecom-paris.fr
+% Modified version by A. Sahu - 2024 adrish.sahu@ip-paris.fr
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check if the Golay sequence basis is set to 0
 if p.tx.seqBasis == 0 

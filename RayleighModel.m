@@ -1,5 +1,4 @@
 function [p,r]=RayleighModel(p,r)
-%CHANGED
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function that generates the probing sequence, models the sensed fiber, 
 % the transmitter and the receiver frontends, and performs the correlation
@@ -12,87 +11,83 @@ function [p,r]=RayleighModel(p,r)
 
 global Erx; % global variable containing the propagated field
 
-%%
-tStart = tic;
-tCumul = 0;
+%% Start timing for execution
+tStart = tic; % Start timer for the entire process
+tCumul = 0;   % Initialize cumulative time counter
 
 %% Probing
 
-% Generate probing sequence
-[gCode,p] = genProbingSequence(p); %Probing codes/sweep generation
-p.tx.gCode = gCode; % store coded sequence in 'p'
+% Generate the probing sequence (codes for transmission)
+[gCode, p] = genProbingSequence(p);
+p.tx.gCode = gCode; % Store the generated probing sequence in the parameter structure
 
-p.rx.ErxLen = p.tx.ovsFactor*8*2^(p.tx.seqOrderCst)*p.tx.nbCodes; %First estimate of ErxLen (recomputed later after reception), used for display purposes
-p.rx.fSamp = p.tx.ovsFactor*p.tx.fSymb;
+% Estimate initial reception length and set sampling frequency
+p.rx.ErxLen = length(p.tx.gCode)* p.tx.nbCodes;
+p.rx.fSamp = p.tx.ovsFactor * p.tx.fSymb;
 
-% if SIMO or SISO, choose X or Y code for probing
-if strcmpi(p.ProbingMode,'simo') || strcmpi(p.ProbingMode,'siso')
-    if p.tx.Xpol % 1
-        gCode(2,:) = zeros(1,size(gCode,2));
-    else % 0
-        gCode(1,:) = zeros(1,size(gCode,2));
+% Handle polarization modes based on user configuration
+if strcmpi(p.ProbingMode, 'simo') || strcmpi(p.ProbingMode, 'siso')
+    if p.tx.Xpol
+        gCode(2, :) = zeros(1, size(gCode, 2)); % Enable X polarization only
+    else
+        gCode(1, :) = zeros(1, size(gCode, 2)); % Enable Y polarization only
     end
 end
 
-if p.tx.OFDM 
-    tx = reshape(([gCode(1,:); zeros(p.tx.subcarriers-1,size(gCode,2))]),1,[]); % parallel to serial OFDM symbols for both subcarriers across polar X
-    ty = reshape(([gCode(2,:); zeros(p.tx.subcarriers-1,size(gCode,2))]),1,[]);
-    %gCodeRep = repmat(cat(1,tx,ty),1,p.tx.nbCodes); % repeated sequence for subband1 according to number of codes
-    gCodeSingle = cat(1,tx,ty);
-    
-    
-    
-else % single carrier
-    gCodeSingle = gCode;
+% Handle OFDM or single-carrier probing sequence
+if p.tx.OFDM
+    % Convert codes to serial OFDM symbols for subcarriers
+    tx = reshape([gCode(1, :); zeros(p.tx.subcarriers - 1, size(gCode, 2))], 1, []);
+    ty = reshape([gCode(2, :); zeros(p.tx.subcarriers - 1, size(gCode, 2))], 1, []);
+    gCodeSingle = cat(1, tx, ty);
+else
+    gCodeSingle = gCode; % Use single carrier probing sequence
 end
 
-%normalization to 1mW per polarization
-P_gcode = mean(mean(abs(gCodeSingle.^2),2));
-gCodeSingle = gCodeSingle*sqrt(1e-3/P_gcode);
+% Normalize probing signal to 1 mW per polarization
+P_gcode = mean(mean(abs(gCodeSingle.^2), 2));
+gCodeSingle = gCodeSingle * sqrt(1e-3 / P_gcode);
 
-p.rx.ErxLen = size(gCodeSingle,2)*p.tx.nbCodes*p.rx.ovsFactor;
-vec_size = p.rx.ErxLen; % number of probing symbols
-Etx = repmat(gCodeSingle,1,p.tx.nbCodes);
+% Normalize the probing signal power to 1 mW
+P_gcode = mean(mean(abs(gCodeSingle.^2), 2)); % Calculate power
+gCodeSingle = gCodeSingle * sqrt(1e-3 / P_gcode); % Normalize to 1 mW
 
-% Oversample Etx and spply rectangular pulse shape
-Etx = rectpulse(Etx.',p.tx.ovsFactor).';%CHANGED
-%Etx = repelem(Etx, 1, p.tx.ovsFactor); % Oversample each symbol by replicating
+% Generate the transmitted optical signal by replicating the sequence
+Etx = repmat(gCodeSingle, 1, p.tx.nbCodes);
 
+% Display power levels if enabled
 if p.displ.powerIndication
-    P_gcode = mean(mean(abs(gCodeSingle.^2),2));
-    Gcode_level = 10*log10(P_gcode*1e3);%*1e3);%dBm
-    fprintf(' gCode level at generation : %.2f dBm per polarization\n', Gcode_level);
+    fprintf('gCode level at generation: %.2f dBm per polarization\n', 10 * log10(P_gcode * 1e3));
 end
 
-%% Rayleigh model generation for the fibre of length p.fibre.L as a series of segments whose size is determined by the symbol rate p.tx.fSymb
-RayStart_time = tic;
+%% Generate Rayleigh scattering model and fiber properties
+RayStart_time = tic; % Start timing Rayleigh model generation
 
-p = genRayleighScattering(p); % Generate fibre scatterers
-[Hi,p] = genJonesMatrices(p); % Define random rotations and generate Jones matrices
+% Generate scatterers in the fiber 
+%p = genRayleighScattering(p);
+[p, HiRep] = genRayleighScattering(p, gCodeSingle);
+
+% Generate Jones matrices representing random fiber rotations
+[Hi, p] = genJonesMatrices(p);
 r.HiGen = Hi;
 
+% Ensure Jones matrices match the size of the probing sequence for convolution
+HiRep = repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes);
 
-% Insert Null Jones matrices after Hi to reach a size equal to previous gCodeRep. Necessary to get same convolution results as before
-% Repeat the Hi matrices instead of repeating the transmitted codes (equivalence regarding convolution)
-% Required to emulate dynamic cases with applied vibrations
-%% CHANGED
-HiRep = repmat( ([Hi,zeros(2,2*(size(gCodeSingle,2)-p.fibre.nbSegments))]) ,1,p.tx.nbCodes);
-%HiRep = [Hi,zeros(2,2*(size(gCodeSingle,2)-p.fibre.nbSegments))];
-%HiRep = [HiRep, zeros(2,length(HiRep)*(p.tx.nbCodes-1))]; %WARNING: we should not repeat both gCode and Hi before convolution
-% Ensure gCodeSingle has a compatible size relative to Hi
-%repFactor = floor(size(gCodeSingle, 2)*0.001 / p.fibre.nbSegments);
+% Handle dynamic fiber model by updating Jones matrices for excited segments
+%if p.fibre.ExcitedSegmentFlag == 1
+%    [p, HiRep] = genDynamicSegt(p, HiRep, p.fibre.ExcitedSegmentIdx(1), ...
+%        p.fibre.ExcitedStrainMax(1), p.fibre.ExcitedF_event(1), ...
+%        p.fibre.ExcitedDynEvolution(1));
+%end
 
-%HiRep = repmat(Hi, 1, repFactor);
+figure(135);
+plot(unwrap(angle(HiRep(1,:))));
+title('Phase evolution of HiRep');
 
-
-
-%Process dynamic model case: recalculates the Jones matrix of the dynamic segment for each transmitted code and stores it at the right place in HiRep
-if p.fibre.ExcitedSegmentFlag == 1 %FIXME needs to be done per Tcode
-     p.tx.gCodesize = size(gCodeSingle,2);
-    [p,HiRep] = genDynamicSegt(p,HiRep,p.fibre.ExcitedSegmentIdx(1),p.fibre.ExcitedStrainMax(1),p.fibre.ExcitedF_event(1),p.fibre.ExcitedDynEvolution(1));
-end %excitedSegmentFlag
-
-fprintf('\n* time to generate Rayleigh scatteringv2: %.2f seconds', toc(RayStart_time)); tCumul = tCumul + toc(RayStart_time);
+% Display the time taken for Rayleigh model generation
+fprintf('\n* Time to generate Rayleigh scattering: %.2f seconds', toc(RayStart_time));
+tCumul = tCumul + toc(RayStart_time);
 clear RayStart_time;
 
 %% Generation of a laser phase noise based on a Lorentzian model
@@ -153,7 +148,8 @@ Erx = Etx;
 
 conv_fft(HiRep(1,1:2:end),HiRep(1,2:2:end),HiRep(2,1:2:end),HiRep(2,2:2:end));
 
-Erx = (Erx(:,1:size(gCodeSingle,2)*p.tx.nbCodes*p.rx.ovsFactor));%CHANGED
+
+Erx = Erx(:,1:size(gCodeSingle,2)*p.tx.nbCodes);
 
 fprintf(' \n * time to apply convolution - transmission %.2f seconds',toc(conv_start)); tCumul = tCumul + toc(conv_start);
 
@@ -185,7 +181,7 @@ p.snr_dB = single(10*log10(SNR_elect));%dB expression of SNR per polar as viewed
 if p.rx.coherentdetection_on
     %Coherent receiver emulation (mixer + balanced photo-detection + TIA)
     % Creating LO - Homodyne detection: no detuning / Parameters: LO power and phase noise
-    E_lo = sqrt(P_Lo).*ones(2,vec_size); %SG01/21 ovsFactor to use here too
+    E_lo = sqrt(P_Lo).*ones(2,p.rx.ErxLen);
     if p.rx.lasernoise_on
         % CHECK IF LASER PHASE NOISE IS WELL APPLIED AT THE RX SIDE
         laserNoiseMat = r.laserNoiseMat;
@@ -246,73 +242,11 @@ clear RxLevel P_erx_moy awgn var_awgn I_cr LoLevel B_ alphaCmrr P_awgn_moy CMRR 
 %% Multicarrier case %FIXME
 corr_start = tic;
 
-% if p.tx.subcarriers > 1% Additional actions for multiple subbands or OFDM demodulation: NOT TESTED
-%     
-%     %     if p.tx.FiltBank %Each subband is oversampled at fSamp
-%     %         sbSumRxSP = fft(Erx);
-%     %         if p.tx.RrcShapingChoice == 1 %RRC pulse shaping at Tx side
-%     %             MaskSb1RxSP = getSpectralRaisedCos(p.tx.ovsFreqDiv*p.rx.ovsFactor, p.tx.rollOffFactor, p.rx.ErxLen).^0.5;%To get a spectral root-raised cosine
-%     %         else
-%     %             MaskSb1RxSP = ([ones(round(p.rx.ErxLen/(2*p.tx.subcarriers)/p.rx.ovsFactor),1);zeros(p.rx.ErxLen-2*round(p.rx.ErxLen/(2*p.tx.subcarriers)/p.rx.ovsFactor),1);ones(round(p.rx.ErxLen/(2*p.tx.subcarriers)/p.rx.ovsFactor),1)]);%To get a rectangular spectral mask that selects the 1st subband only
-%     %         end
-%     %
-%     %         if p.tx.FiltBank, rxDwnSamplFact = p.tx.ovsFreqDiv; elseif p.rx.FiltBankOvs, rxDwnSamplFact = 1; end %Define the downsampling factor
-%     %
-%     %         %rec_symb_SB = ones(p.tx.subcarriers*2, floor(p.rx.ErxLen/rxDwnSamplFact)); %(2=polars) will be used to store received symbols per subband (after FFT)
-%     %         rec_symb_SBX = ones(floor(p.rx.ErxLen/rxDwnSamplFact),p.tx.subcarriers); %Store received symbols per subband (after FFT) for polar X
-%     %         rec_symb_SBY = ones(floor(p.rx.ErxLen/rxDwnSamplFact),p.tx.subcarriers); %Store received symbols per subband (after FFT) for polar Y
-%     %         for n=1:p.tx.subcarriers
-%     %             sbnRx = ifft(circshift(sbSumRxSP,-round(p.rx.ErxLen*(n-1)/p.tx.subcarriers/p.rx.ovsFactor),1).*repmat(MaskSb1RxSP,1,2));%received subband n signal including base band transposition, sampled at the same rate as the Tx side
-%     %             %rec_symb_SB(2*n-1:2*n,:) = [sbnRx(1:rxDwnSamplFact:end,1).'; sbnRx(1:rxDwnSamplFact:end,2).'];%CD 09/2020: WARNING See potential synchro issue here if rxDwnSamplFact>1. '1:p.tx.ovsFreqDiv:end' could be replaced by 'n:p.tx.ovsFreqDiv:end', with 1<=n<=p.tx.ovsFreqDiv
-%     %             rec_symb_SBX(:,n) = sbnRx(1:rxDwnSamplFact:end,1);%CD 10/20 code à checker en mode filterbank %CD 9/20: WARNING See potential synchro issue here if rxDwnSamplFact>1. '1:p.tx.ovsFreqDiv:end' could be replaced by 'n:p.tx.ovsFreqDiv:end', with 1<=n<=p.tx.ovsFreqDiv
-%     %             rec_symb_SBY(:,n) = sbnRx(1:rxDwnSamplFact:end,2);%CD 10/20 code à checker en mode filterbank
-%     %         end
-%     %         Erx = ([rec_symb_SBX(:,1), rec_symb_SBY(:,1)]);%Directly load Erx with 1st subband
-%     %         p.tx.fSymb = p.tx.fSymb/rxDwnSamplFact; %For displays afterwards
-%     %     elseif p.tx.OFDM
-%     if p.tx.syncOffset ~= 0
-%         Erx = circshift(Erx,p.tx.syncOffset,1);
-%     end
-%     
-%     tic;%reshape according to nb subcarriers and to ovsFactor - WARNING (CD 10/20: valid only with p.rx.ovsFactor=2!!!)
-%     size_lim = p.rx.ErxLen - mod(p.rx.ErxLen,2*p.tx.subcarriers);
-%     %%% Reorganize Erx to separate polars and recombine subbands while keeping the oversampling factor (here ovsfactor assumed = 2):
-%     if p.rx.ovsFactor > 1 %assumed == 2
-%         rec_symb_SBX = fft(reshape(([reshape(Erx(1:p.rx.ovsFactor:size_lim,1), p.tx.subcarriers,[]);reshape(Erx(2:p.rx.ovsFactor:size_lim,1), p.tx.subcarriers,[])]),p.tx.subcarriers,[])).';%Size: nbSamplesPerCarrier, (2xnbCarriers)
-%         rec_symb_SBY = fft(reshape(([reshape(Erx(1:p.rx.ovsFactor:size_lim,2), p.tx.subcarriers,[]);reshape(Erx(2:p.rx.ovsFactor:size_lim,2), p.tx.subcarriers,[])]),p.tx.subcarriers,[])).';%Size: nbSamplesPerCarrier, (2xnbCarriers)
-%     else %model : ovsFact = 1
-%         rec_symb_SBX = fft(reshape(Erx(1:size_lim,1),p.tx.subcarriers,[])).';
-%         rec_symb_SBY = fft(reshape(Erx(1:size_lim,2),p.tx.subcarriers,[])).';
-%     end
-%     %%% Reorganize fft signal to form the subbands:
-%     Erx = ([rec_symb_SBX(:,1), rec_symb_SBY(:,1)]);%Directly load Erx with 1st carrier
-%     toc;
-%     p.tx.fSymb = p.tx.fSymb/p.tx.subcarriers;
-%     %    end%OFDM
-%     
-%     p.rx.fSamp = p.rx.ovsFactor*p.tx.fSymb;
-%     p.fibre.spatialRes = p.fibre.cFiber/(2*p.tx.fSymb);
-%     p.fibre.nbSegments = floor(p.fibre.L_/p.fibre.spatialRes);
-% end %subcarriers > 1
-
 %% Correlation process at the reception
 p.rx.ErxLen = size(Erx,2);
 Erx=Erx.';
 p.tx.detectionindex = [0 0]; %For synchronization and detection of fibre start and fibre end
 
-%In case p.rx.FiltBankOvs, correlation applies with the oversampled and pulse shaped version of gCode, and it yields a result sampled at fSamp
-% if p.tx.FiltBank % the code to be used for correlation is an oversampled (if p.rx.FiltBankOvs) & pulse shaped version of initial gCode (already oversampled by p.rx.ovsFactor)
-%     if p.tx.FiltBank, rxUpSamplFact = 1; elseif p.rx.FiltBankOvs, rxUpSamplFact = p.tx.ovsFreqDiv; end %Define the upsampling factor for the correlation code
-%     gCodeRx = ([reshape(repmat(gCode(1,:),rxUpSamplFact,1),1,rxUpSamplFact*size(gCode,2)) ; reshape(repmat(gCode(2,:),rxUpSamplFact,1),1,rxUpSamplFact*size(gCode,2))]).';%Duplicate the codes: codes are twice longer, the now spread over half the bandwidth,in base band: this feeds the first subband
-%     if p.tx.RrcShapingChoice == 1
-%         rcSP = getSpectralRaisedCos(p.rx.ovsFactor*rxUpSamplFact, p.tx.rollOffFactor, size(gCodeRx,1));%To get a spectral raised cosine
-%     else
-%         rcSP = ([ones(round(size(gCodeRx,1)/(2*p.tx.subcarriers)/p.rx.ovsFactor),1);zeros(size(gCodeRx,1)-2*round(size(gCodeRx,1)/(2*p.tx.subcarriers)/p.rx.ovsFactor),1);ones(round(size(gCodeRx,1)/(2*p.tx.subcarriers)/p.rx.ovsFactor),1)]);%CD WARNING: bug on upper line corrected
-%     end
-%
-%     gCodeRxRc = ifft(fft(gCodeRx) .* repmat(rcSP,1,2)).';
-%     gCode = gCodeRxRc; %The new code to be used for correlation is now an oversampled & pulse shaped version of initial gCode
-% end %FiltBank(ovs)
 
 for k = 1:p.tx.subcarriers
     p = rxSensingCorrelation(p); % Extract estimated Jones matrices

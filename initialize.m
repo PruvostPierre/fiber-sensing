@@ -89,11 +89,6 @@ p.tx.code_comb =                    0; %0,1,..,6. For same code choose 0, for ot
 p.tx.syncOffset =                   0; %OFDM synchronization
 p.rx.OFDMreconstruction =                 1;  %if OFDM trace, choose combination of OFDM subcarriers or full OFDM reconstruction 
 
-% for linear sweeps
-p.tx.F0sweep =    0.*p.tx.fSymb; %starting sweep frequency
-p.tx.F1sweep =    0.5*p.tx.fSymb; %stoping sweep frequency
-p.tx.DFsweep =    0.006;%0.05; %for SWEEP_PARALLEL case, 0<DFsweep<0.5
-p.tx.MUsweep =    0.08;%for SWEEP_CURVED case, Sweep curvature param (0<mu<0.25)
 
 % TX impairments
 p.tx.lasernoise_on = true; % include or not laser phase noise
@@ -132,7 +127,7 @@ p.rx.dfLaser = p.tx.dfLaser; %laser linewidth (full width at half maximum), self
 
 % DSP parameters
 p.rx.apply_total_normalization =  true;
-p.rx.ovsFactor = 1; %No oversampling in model; 2; %usual value at RX;
+p.rx.ovsFactor = 2; %No oversampling in model; 2; %usual value at RX;
 p.rx.resamplingFilter = true;
 
 %Correlation parameters
@@ -231,5 +226,5 @@ p.displ.errCalc =                   0;
 p.displ.errCalcDispl =              0;
 p.displ.errDet =                    0; %|det|/AiPi
 
-p.displ.ploterrors =                      0; %plot absolute and relative errors
+p.displ.ploterrors =                0; %plot absolute and relative errors
 

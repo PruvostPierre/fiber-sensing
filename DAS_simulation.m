@@ -14,114 +14,93 @@
 
 %% Initialization
 
-clear global; %clear global variables p and r;
+% Clear workspace and command window
 clear all;
+clear global;
 close all;
+clc;
 
-% p: structure containing simulation parmaters and initialized in
-% initialize.m
-% r: structure containing generated results
-
-% Path addition for subfunctions
-addpath('D:\Notebook\DAS\DAS model 230924 - Copy\functions');
+% Subfunction Path addition
+addpath('D:\Notebook\DAS\DAS model 230924 - Copy\functions'); %CHANGEME
 addpath('D:\Notebook\DAS\DAS model 230924 - Copy');
 
-p.env = 'exp'; % Environnement: 'model' for simulation or 'exp' for experimentally acquired data
-p.fibre.L  =        1000;  % Length of sensed fiber in meters [m]
-p.tx.fSymb =        50e6;  % Symbol rate [Baud]
-p.tx.ovsFactor =       1; %1 in simulation model
-p = initialize(p);
+% Initialize environment and simulation parameters
+p.env = 'exp';              % 'model' for simulation, 'exp' for experimental data
+p.fibre.L = 1000;           % Fiber length in meters [m]
+p.tx.fSymb = 50e6;          % Symbol rate [Baud]
+p.tx.ovsFactor = 2;         % Oversampling factor
+p = initialize(p);          % Initialize default parameters
 
 %% Override default parameters
 
-%Single or dual-polarization at TX? RX?
-p.ProbingMode =  'MIMO'; % 'SISO', 'SIMO', 'MISO';
-p.tx.Xpol =  1; % if SISO or SIMO, is Xpol used at TX?
-p.tx.Xpol =  1; % if SISO or MISO, is Xpol used at RX?
+% Transmission and reception configuration
+p.ProbingMode = 'MIMO';     % 'SISO', 'SIMO', 'MISO', or 'MIMO'
+p.tx.Xpol = 1;              % Use cross-polarization at TX
+p.rx.Xpol = 1;              % Use cross-polarization at RX
 
-p.stat_NB = 1; % Number of generated fibres over which stats are done
+% Statistical simulations
+p.stat_NB = 1;              % Number of generated fibers for statistical analysis
 
-%Fibre
-p.fibre.ScatDensity =   50; % nb of backscattering points per spatial segment []
-p.fibre.polCorrL =     20; % Polarization beat length between 0.05 and 100m. [m]
+% Fiber parameters
+p.fibre.ScatDensity = 50;   % Backscattering points per spatial segment []
+p.fibre.polCorrL = 20;      % Polarization beat length [m]
 
-%Parameters for Dynamic case (external vibration): a single fiber segment is excited if ExcitedSegmentFlag=1
-p.fibre.ExcitedSegmentFlag = 0;     %A flag to change the fiber response as fct of time at one segment position
-p.fibre.ExcitedSegmentIdx =  200;   % index of segment over which the vibration is applied
-p.fibre.ExcitedStrainMax = 300e-9;   % Maximal fiber extension per meter induced by mechanical event [m/m]
-p.fibre.ExcitedF_event = 50;        % Frequency of the pure sine wave perturbation [Hz]
-p.fibre.ExcitedDynEvolution = 0;    % 0 (default), +1 or -1:   +1(resp.-1) linear amplitude increase over time (resp. decrease)
-p.fibre.artificialFading = 1;       %add extra fading at perturbation location (1= no extra fading)
+% Dynamic fiber excitation (external vibration)
+p.fibre.ExcitedSegmentFlag = 1;   % Enable dynamic excitation
+p.fibre.ExcitedSegmentIdx = 200;  % Segment index for vibration
+p.fibre.ExcitedStrainMax = 300e-9;  % Maximum strain induced by vibration [m/m]
+p.fibre.ExcitedF_event = 50;      % Vibration frequency [Hz]
+p.fibre.ExcitedDynEvolution = 0;  % Linear amplitude evolution (0: none, +1/-1: increase/decrease)
+p.fibre.artificialFading = 1;     % Add artificial fading (1: enabled)
 
-%Transmitter
-p.tx.ProbingMethod =  'Golay';
-p.tx.seqOrderCst =  11;%Number of basis iterations to get the final sequences
-p.tx.nbCodes =   300;% Number of transmitted codewords
-p.tx.dfLaser =  0;% Hz, FWHM laser linewidth
+% Transmitter parameters
+p.tx.ProbingMethod = 'Golay';      % Probing sequence type
+p.tx.seqOrderCst = 11;             % Sequence order for Golay codes
+p.tx.nbCodes = 300;                % Number of transmitted codewords
+p.tx.dfLaser = 0;                  % Laser linewidth [Hz]
 
-%Receiver
-p.tx.lasernoise_on = false; %Add laser noise or not?
-p.tx.ampli_on = false; % EDFA amplifier on or off?
-p.tx.lasernoise_on = false; %Add laser noise only at LO or not?
-p.tx.awgnRX_on = false; %apply AGN at RX?
-p.tx.offset_ratio = 1; % ratio with respect to one code, for initial offset after correlation, minimum value: 1
+% Receiver parameters
+p.tx.lasernoise_on = false;        % Add laser noise at the LO
+p.tx.ampli_on = false;             % Enable EDFA amplifier
+p.tx.awgnRX_on = false;            % Add AWGN at the receiver
+p.tx.offset_ratio = 1;             % Offset ratio after correlation (minimum: 1)
 
-% Processing and display parameters
-p.displ.fIdx =  10;
-p.displ.powerIndication =  1; %(model) prints in and out power for each block in cmd window
-%p.displ.lowResolFactor =  10; %1;%Coarse spatial resolution factor used during initial diff phase calculation (100 =>1/100 of the rayleigh backscatters are selected
-%p.displ.highestIntensSelectionRatio =     0.1;%0:none 1:all, ratio for selection of highest intensity reflectors
+% Display parameters
+p.displ.fIdx = 10;                 % Figure index for display
+p.displ.powerIndication = 1;       % Display power information (1: enabled)
 
-
-%% Seed generation (Model only)
+%% Seed Generation (Model Only)
+% Generate random seeds for reproducibility
 rng('shuffle');
 p.seeds.seed_scatMag = rng('shuffle');
 p.seeds.seed_scatDist = rng('shuffle');
-
 p.seeds.seed_theta = rng('shuffle');
 p.seeds.seed_rotPol = rng('shuffle');
 p.seeds.seed_beta = rng('shuffle');
 p.seeds.seed_gamma = rng('shuffle');
 
-%% CHECK these parameters
-mseTab = []; %FIXME
-%p.dfLTab = [0 0.005 0.1 0.5 0.75 1 5 7 10 15 30 50 75 100 150 200 400];
-%p.seqOrderCsttab = [6 8 10 12 14 16];
-p.stockStd = []; %FIXME
-p.stockabsDet =[]; %FIXME
-r.threshold_comb_stock = []; %FIXME
-r.nbRemovedLastSegments =                 1;
+%% Pre-allocate Variables for Analysis
+% Initialize variables to store simulation results
+mseTab = [];                      % Placeholder for Mean Squared Error results
+p.stockStd = [];                  % Placeholder for standard deviation of differential phase
+p.stockabsDet = [];               % Placeholder for determinant values of Jones matrices
+r.threshold_comb_stock = [];      % Placeholder for detection thresholds
+r.nbRemovedLastSegments = 1;      % Segments removed from analysis (default: 1)
 
-%% Main loop
-for n=1:p.stat_NB
-    
-    %Change the seed between runs
-    %p.seeds.seed_scatMag = rng(6);
-    %p.seeds.seed_scatDist = rng(7);
-    %p.seeds.seed_theta = rng(8);
-    %p.seeds.seed_rotPol = rng(12);%6'shuffle'
-    %p.seeds.seed_beta = rng(9);%3'shuffle'
-    %p.seeds.seed_gamma = rng(123845);
-    
-    % TX + fiber + RX + correlation and estimation of Jones matrices
-    [p,r]=RayleighModel(p,r);
-    
-    % Post-processing: differential phase, windowing, filtering, SOP computation
-    [p,r] = getPostProcessingfromJones(p,r);
-    
-    %Reliability trajectories  %FIXME not tested
-    %p = displayRelPhi2D(p,r) ;
-  
-    % Store Postproc parameters
-    p.stockStd = cat(2, p.stockStd,p.stdDiffPhiTabSelect(2:end-1));
-    p.stockabsDet = cat(2, p.stockabsDet,r.selectAbsDetTab_nonorm(2:end-1));%/r.threshold_comb);
-    r.threshold_comb_stock = cat(2,r.threshold_comb_stock, r.threshold_comb);
-    
-    %     p.displ.selectedIdxTabSB(n,:) =                           p.displ.selectedIdxTab;
+%% Main Simulation Loop
+for n = 1:p.stat_NB
+    % Simulate transmission, fiber propagation, reception, and Jones matrix estimation
+    [p, r] = RayleighModel(p, r);
+
+    % Post-process data: differential phase, filtering, SOP calculation
+    [p, r] = getPostProcessingfromJones(p, r);
+
+    % Store results for analysis
+    p.stockStd = cat(2, p.stockStd, p.stdDiffPhiTabSelect(2:end-1));
+    p.stockabsDet = cat(2, p.stockabsDet, r.selectAbsDetTab_nonorm(2:end-1));
+    r.threshold_comb_stock = cat(2, r.threshold_comb_stock, r.threshold_comb);
 end
 
-
-%% Graphics to display results
-p = displayRayleighDetection(p,r);%display function
-
-%mseTab = cat(1, mseTab, [p.mseDetOut p.mseNormOUT p.mseDetOUTbs p.mseNormOUTbs p.tx.dfLaser]);
+%% Display Results
+% Visualize Rayleigh detection analysis
+p = displayRayleighDetection(p, r);

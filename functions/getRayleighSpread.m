@@ -64,7 +64,7 @@ if strcmpi(p.env,'exp')
         nbSegments = StopX-StartX+ovsCodeLength+1;
     end
     
-    EstimatedFiberLength = nbSegments*p.fibre.spatialRes/p.rx.ovsFactor; % (StopX-StartX)*p.fibre.spatialRes*p.tx.fSymb/p.rx.fSamp;
+    EstimatedFiberLength = nbSegments*p.fibre.spatialRes*p.tx.ovsFactor/p.rx.ovsFactor; % (StopX-StartX)*p.fibre.spatialRes*p.tx.fSymb/p.rx.fSamp;
     fprintf('Rayleigh Start & Stop detection: PeakX:%d (ratioAfterOverBefore:%.1f) StartX:%d  StopX:%d  PeakY:%.2e  StartY:%.2e  StopY:%.2e  Estimated fiber length:%.1fm\n', PeakX, ratioIntens, StartX, StopX, PeakY, StartYLowRes, StopYLowRes, EstimatedFiberLength);
     
     if p.displ.detection

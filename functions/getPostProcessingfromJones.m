@@ -125,7 +125,9 @@ if p.displ.lowResolFactor > 1
        rotated_detJonesTab = lowresDet_full .* repmat(rotval_tab,1,p.rx.nbDetectedCodes);  %Directly rotate determinant values from detJonesTabSB, so that we don't have to re-compute the determinants from rotated HiTabSum
        detJonesTab = reshape(sum(rotated_detJonesTab,1),p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes)/p.displ.lowResolFactor; %[Nb segts x Nb codes] New constrictively summed det  %Dimensions : [nbSegments x NbJonesMat]
    
-       p.displ.selectedIdxTab = (1:p.rx.nbOvsSelectedReflectors);
+       %p.displ.selectedIdxTab = (1:p.rx.nbOvsSelectedReflectors);
+       p.displ.selectedIdxTab = single(1:p.rx.nbReflectors); % Ensure all reflectors are considered
+
        r.intJonesTab = abs(detJonesTab); 
     else %choose best segment
         nbBlocks = floor(p.rx.nbReflectors/p.displ.lowResolFactor);%Nb selected reflectors (target)
@@ -152,7 +154,7 @@ end
 r.maxdet = max(abs(detJonesTab(p.displ.selectedIdxTab,:)),[],'all');
 r.selectAbsDetTab_nonorm =  abs(detJonesTab(p.displ.selectedIdxTab,:));  %store all softbits
 r.selectAbsDetTab = abs(detJonesTab(p.displ.selectedIdxTab,:))/r.maxdet; %store averaged softbits
-r.selectIntFrobTab = r.intJonesTab(p.displ.selectedIdxTab,:); % backscattered intensity from selected segments 
+r.selectIntFrobTab = r.intJonesTab(p.displ.selectedIdxTab,:); 
 r.softBitDiffSelect = [r.selectAbsDetTab(1,:); min(r.selectAbsDetTab(2:end,:),r.selectAbsDetTab(1:end-1,:))];  %r.softBitDiffSelect = r.softBitDiffSelect./max(r.softBitDiffSelect,[],'all');%sum softbit per segment (softbit for diffphase)
 
 r.softBitSelectSTD = std(r.selectAbsDetTab.'); r.muABSDET = mean(r.selectAbsDetTab,2);
@@ -312,7 +314,7 @@ if p.displ.freqvsTimeDist %FIXME not tested
     
     p.displ.fIdx=p.displ.fIdx+1;figure(p.displ.fIdx);
     colorbar; colormap(jet);
-    %contour(ftab,p.displ.selectedIdxTab*(0.5*p.fibre.cFiber/p.rx.fSamp),freqdiffPhiTabSelect,[-15,-10,0,5,10,15,20,35],'fill','on');
+    contour(ftab,p.displ.selectedIdxTab*(0.5*p.fibre.cFiber/p.rx.fSamp),freqdiffPhiTabSelect,[-15,-10,0,5,10,15,20,35],'fill','on');
     
     minFreqLeveldB = -30;%A min level threshold to handle the color map
     offsetColMap = 20;%An offset to transpose the color map
@@ -327,7 +329,7 @@ end
 if p.displ.averagingvsTime  %FIXME not tested
     r.max_dist_idx = p.rx.nbReflectors*(p.displ.maxloc/p.fibre.L);
     r.max_time_idx = p.rx.nbDetectedCodes;
-    compLevelDist = 1;%(p.rx.ovsFactor*logical(p.rx.decimation));% to scale the magnitude display of the reflector phase (but jointly scale the fiber distance observed)
+    compLevelDist = 1;% to scale the magnitude display of the reflector phase (but jointly scale the fiber distance observed)
     p.displ.fIdx=p.displ.fIdx+1;
     if p.displ.scaled_map
         prompt = {'linear scaling factor ?', 'Exponential scaling factor ?'};

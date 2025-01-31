@@ -36,14 +36,7 @@ switch (lower(p.tx.ProbingMethod))
         gCode(2, :) = circshift(gCode(1, :).', p.tx.Ncode / 2).'; % Shift the second sequence by half the length
         
         maxLengthFactor = (1/2); % Cazac codes are less compact, so maximum length factor is 1/2
-        
-    % Sweep Code: Generates a probing signal with orthogonal sweep signals
-    case 'sweep'
-        [gCode, p] = genSweep(p); % Generate sweep probing codes
-        gCode(1, :) = (sqrt(length(gCode(1, :)) / norm(gCode(1, :))^2)) * gCode(1, :); % Normalize first sequence
-        gCode(2, :) = (sqrt(length(gCode(2, :)) / norm(gCode(2, :))^2)) * gCode(2, :); % Normalize second sequence
-        
-        maxLengthFactor = (1/2); % Sweep codes also have a length factor of 1/2
+       
         
     % Default case: If an unknown probing method is provided, an error is raised
     otherwise
