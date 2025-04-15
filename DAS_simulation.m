@@ -59,7 +59,7 @@ p.fibre.artificialFading = 1;     % Add artificial fading (1: enabled)
 % Transmitter parameters
 p.tx.ProbingMethod = 'Golay';      % Probing sequence type
 p.tx.seqOrderCst = 11;             % Sequence order for Golay codes
-p.tx.nbCodes = 800;                % Number of transmitted codewords
+p.tx.nbCodes = 300;                % Number of transmitted codewords
 p.tx.dead_zone = 0;
 p.tx.dfLaser = 0;                  % Laser linewidth [Hz]
 p.tx.lasernoise_on = false;        % Add laser noise at the LO

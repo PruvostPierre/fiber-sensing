@@ -73,14 +73,15 @@ duration = 20;
 duration2 = 30;
 p.pola.codeLength = size(gCodeSingle, 2);
 if p.pola.betaEvent ==1
-    HiEvent = birefringenceEvent(p, p.pola.segIdx, 0.5); %add a sharp change in beta at segment segIdx
-    HiEvent2 = birefringenceEvent(p, p.pola.segIdx2, 0.05); %add a sharp change in beta at segment segIdx2
+    HiEvent = birefringenceEvent(p, p.pola.segIdx+1, 0.05); %add a sharp change in beta at segment segIdx
+    HiEvent2 = birefringenceEvent(p, p.pola.segIdx2+1, 0.05); %add a sharp change in beta at segment segIdx2
     %HiRep : repeat Hi from first code to codeIdx, then repeat HiEvent from codeIdx to codeIdx+duration and then repeat Hi from codeIdx+duration to end
     HiRep = [repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.pola.codeIdx-1), ...
             repmat([HiEvent, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, duration), ...
-            repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.pola.codeIdx2-p.pola.codeIdx-duration), ...
-            repmat([HiEvent2, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, duration2), ...
-            repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes-p.pola.codeIdx2-duration2)];
+            repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes-p.pola.codeIdx-duration)];
+    p.pola.HiGen = [repmat(Hi, 1, p.pola.codeIdx-1), ...
+            repmat(HiEvent, 1, duration), ...
+            repmat(Hi, 1, p.tx.nbCodes-p.pola.codeIdx-duration)];
 else
     HiRep = [repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes)];
 end
