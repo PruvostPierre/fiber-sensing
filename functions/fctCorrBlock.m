@@ -14,6 +14,8 @@ function out = fctCorrBlock(Y, gCode_fft, Hlen,offset_ratio)
 % Modified version by A. Sahu - 2024 adrish.sahu@ip-paris.fr
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 X1=conj(fft(Y(:,1))); % conjugate of Fast Fourier transform for x(1,:)
 X2=conj(fft(Y(:,2))); % conjugate of Fast Fourier transform for x(2,:)
 
@@ -29,17 +31,20 @@ y11 = circshift(flipud(y11),1);
 y12 = circshift(flipud(y12),1);
 y21 = circshift(flipud(y21),1);
 y22 = circshift(flipud(y22),1);
+
 %CHANGED
 normalize = true;
 if normalize
-    scaleFactor = Hlen;
+    scaleFactor =Hlen; 
 else
     scaleFactor = 1;                                                                              
 end
 
+
 % Output with adjusted scaling
-out(1,:) = y11(round(offset_ratio*Hlen)+1:end) ./ scaleFactor;
-out(2,:) = y21(round(offset_ratio*Hlen)+1:end) ./ scaleFactor;
-out(3,:) = y12(round(offset_ratio*Hlen)+1:end) ./ scaleFactor;
-out(4,:) = y22(round(offset_ratio*Hlen)+1:end) ./ scaleFactor;
+out(1,:) = y11(floor(offset_ratio*Hlen)+1:end) ./ scaleFactor;
+out(2,:) = y21(floor(offset_ratio*Hlen)+1:end) ./ scaleFactor;
+out(3,:) = y12(floor(offset_ratio*Hlen)+1:end) ./ scaleFactor;
+out(4,:) = y22(floor(offset_ratio*Hlen)+1:end) ./ scaleFactor;
+
 

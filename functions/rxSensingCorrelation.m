@@ -16,7 +16,7 @@ tic;
 brutBlockLen = pow2(floor(log2(p.rx.corrPerBlockTwin*p.tx.fSymb+length(p.tx.gCode)-1)));
 %Test if blocklen is accurately computed (case short t_probing)
 if p.rx.ErxLen < brutBlockLen %MODEL case (mostly) : if fiber+nbcodes too small (as if T_probing << 1s)
-    fprintf('\n\n blem: ErxLen is %d shorter than default blocklen %d. Note that gCode is %d \n', p.rx.ErxLen, brutBlockLen, length(p.tx.gCode));
+    fprintf('\n\n problem: ErxLen is %d shorter than default blocklen %d. Note that gCode is %d \n', p.rx.ErxLen, brutBlockLen, length(p.tx.gCode));
     brutBlockLen = floor(p.tx.nbCodes*length(p.tx.gCode)/p.tx.subcarriers); 
     fprintf('\nBlock length set to %d = nbCodes*%d/subcarriers \n', brutBlockLen, length(p.tx.gCode));
 elseif brutBlockLen<5*length(p.tx.gCode) %Check brutBlockLen>>hLen %FIXME

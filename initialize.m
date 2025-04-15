@@ -28,10 +28,10 @@ p.rx.Xpol =  1;             % if SISO or MISO, is Xpol used at RX?
 p.ng =     p.Kg*p.N;        % Group velocity refractive index of the fibre
 p.f_0 =    p.C/p.tx.Lambda; % central frequency of laser source [Hz]
 p.fibre.LossdB =   -0.2;    % fibre loss coefficient [dB/km]
-p.fibre.polCorrL =    1;   % Polarization beat length between 0.05 and 100m. Common value for SSMF is 20cm. [m]
+p.fibre.polCorrL =    1;   % Polarization correlation length between 0.05 and 100m. Common value for SSMF is 20cm. [m]
 
 p.fibre.cFiber =  p.C/p.ng; % light velocity in the fibre [m/s]
-p.fibre.spatialRes =     p.fibre.cFiber/(2*p.tx.fSymb*p.tx.ovsFactor); % spatial resolution induced by symbol rate [m]
+p.fibre.spatialRes =     p.fibre.cFiber/(2*p.tx.fSymb*p.tx.ovsFactor); % spatial resolution induced by symbol rate [m] CHANGENAME
                          %(factor 2: backscatter roundtrip in each fiber segment)
 p.fibre.nbSegments =     floor(p.fibre.L/p.fibre.spatialRes); % number of fiber segments of length p.fibre.spatialRes 
 p.fibre.TxSpatialRes =   p.fibre.spatialRes; % FIX ME

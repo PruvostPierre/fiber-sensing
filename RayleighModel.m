@@ -48,12 +48,9 @@ end
 P_gcode = mean(mean(abs(gCodeSingle.^2), 2));
 gCodeSingle = gCodeSingle * sqrt(1e-3 / P_gcode);
 
-% Normalize the probing signal power to 1 mW
-P_gcode = mean(mean(abs(gCodeSingle.^2), 2)); % Calculate power
-gCodeSingle = gCodeSingle * sqrt(1e-3 / P_gcode); % Normalize to 1 mW
 
 % Generate the transmitted optical signal by replicating the sequence
-Etx = repmat(gCodeSingle, 1, p.tx.nbCodes);
+Etx = repmat(gCodeSingle, 1, p.tx.nbCodes); %repeat the sequence number of codes times
 
 % Display power levels if enabled
 if p.displ.powerIndication
@@ -65,14 +62,39 @@ RayStart_time = tic; % Start timing Rayleigh model generation
 
 % Generate scatterers in the fiber 
 %p = genRayleighScattering(p);
-[p, HiRep] = genRayleighScattering(p, gCodeSingle);
+[p, Hi] = genRayleighScattering(p, gCodeSingle);
+
+%add dynamic birefringence event 
+p.pola.codeIdx = 100;
+p.pola.codeIdx2 = 150;
+p.pola.segIdx = 550;
+p.pola.segIdx2 = 700;
+duration = 20;
+duration2 = 30;
+p.pola.codeLength = size(gCodeSingle, 2);
+if p.pola.betaEvent ==1
+    HiEvent = birefringenceEvent(p, p.pola.segIdx, 0.5); %add a sharp change in beta at segment segIdx
+    HiEvent2 = birefringenceEvent(p, p.pola.segIdx2, 0.05); %add a sharp change in beta at segment segIdx2
+    %HiRep : repeat Hi from first code to codeIdx, then repeat HiEvent from codeIdx to codeIdx+duration and then repeat Hi from codeIdx+duration to end
+    HiRep = [repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.pola.codeIdx-1), ...
+            repmat([HiEvent, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, duration), ...
+            repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.pola.codeIdx2-p.pola.codeIdx-duration), ...
+            repmat([HiEvent2, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, duration2), ...
+            repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes-p.pola.codeIdx2-duration2)];
+else
+    HiRep = [repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes)];
+end
+r.HiGen = HiRep;
+
+%Do convolution of the probing sequence with the fiber impulse response only in forward
+HiRep_forward = repmat([p.fibre.Hi_forward, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes);
 
 % Generate Jones matrices representing random fiber rotations
-[Hi, p] = genJonesMatrices(p);
-r.HiGen = Hi;
+%[Hi, p] = genJonesMatrices(p);
+%r.HiGen = HiRep;
 
 % Ensure Jones matrices match the size of the probing sequence for convolution
-HiRep = repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes);
+%HiRep = repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes);
 
 % Handle dynamic fiber model by updating Jones matrices for excited segments
 %if p.fibre.ExcitedSegmentFlag == 1
@@ -81,9 +103,9 @@ HiRep = repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 
 %        p.fibre.ExcitedDynEvolution(1));
 %end
 
-figure(135);
-plot(unwrap(angle(HiRep(1,:))));
-title('Phase evolution of HiRep');
+%figure(135);
+%plot(unwrap(angle(HiRep(1,:))));
+%title('Phase evolution of HiRep');
 
 % Display the time taken for Rayleigh model generation
 fprintf('\n* Time to generate Rayleigh scattering: %.2f seconds', toc(RayStart_time));
@@ -144,16 +166,83 @@ clear P_gcode P_gcode1 Gcode_level Gcode_level1 EDFA_noise N_ase amplinoise_star
 
 conv_start = tic;
 
-Erx = Etx;
+Erx = Etx; 
+%create a test signal : jones vector of polarization 45°  
+Etx_test = 1/sqrt(2)*[1; 1]; % Ensure Jones vector is a column vector and normalized
+% Propagate Etx_test through the forward and backward models
+Erx = conv_fft(Erx, HiRep(1,1:2:end),HiRep(1,2:2:end),HiRep(2,1:2:end),HiRep(2,2:2:end));
+fprintf(' \n * time to apply convolution - transmission %.2f seconds',toc(conv_start)); tCumul = tCumul + toc(conv_start);
 
-conv_fft(HiRep(1,1:2:end),HiRep(1,2:2:end),HiRep(2,1:2:end),HiRep(2,2:2:end));
+%% Display forward and backscattered SOP on sphere
+Erx_backscattered = zeros(2, p.fibre.nbSegments+1); % Initialize Erx_backscattered
+Hi_test = reshape(p.fibre.Hi, 2, 2, p.fibre.nbSegments);
+Erx_backscattered(:, 1) = Etx_test; 
+for i = 2:p.fibre.nbSegments+1
+    Erx_backscattered(:, i) = Hi_test(:, :, i-1) * Etx_test; % Apply the Jones matrix to the test signal
+end
+Erx_forward = zeros(2, p.fibre.nbSegments+1); % Initialize Erx_forward
+Hi_test_forward = reshape(p.fibre.Hi_forward, 2, 2, p.fibre.nbSegments);
+Erx_forward(:, 1) = Etx_test;
+for i = 2:p.fibre.nbSegments+1
+    Erx_forward(:, i) = Hi_test_forward(:, :, i-1) * Etx_test; % Apply the Jones matrix to the test signal
+end
+
+stokes(double(Erx_backscattered(:, 1)));
+hold on;
+stokes(double(Erx_forward(:, 1)));
+hold on;
+stokes(double(Erx_backscattered(:, end)));
+hold on;
+stokes(double(Erx_forward(:, end)));
 
 
 Erx = Erx(:,1:size(gCodeSingle,2)*p.tx.nbCodes);
+%Erx_backscattered = conv_fft(Etx_test, p.fibre.Hi(1,1:2:end),p.fibre.Hi(1,2:2:end),p.fibre.Hi(2,1:2:end),p.fibre.Hi(2,2:2:end));
+%Erx_forward = conv_fft(Etx_test, p.fibre.Hi_forward(1,1:2:end),p.fibre.Hi_forward(1,2:2:end),p.fibre.Hi_forward(2,1:2:end),p.fibre.Hi_forward(2,2:2:end));
 
-fprintf(' \n * time to apply convolution - transmission %.2f seconds',toc(conv_start)); tCumul = tCumul + toc(conv_start);
+%plot Erx and Erx_forward stokes parameters on the poincaré sphere for index 10
+
+%convert Jones vector to stokes parameters
+Erx_forward_s0 = abs(Erx_forward(1,:)).^2 + abs(Erx_forward(2,:)).^2;
+Erx_forward_s1= 2*real(conj(Erx_forward(1, :)).*Erx_forward(2,:))./Erx_forward_s0;
+Erx_forward_s2 = 2*imag(conj(Erx_forward(1, :)).*Erx_forward(2,:))./Erx_forward_s0;
+Erx_forward_s3 = (abs(Erx_forward(1,:)).^2 - abs(Erx_forward(2,:)).^2)./Erx_forward_s0;
+
+Erx_backscattered_s0 = abs(Erx_backscattered(1,:)).^2 + abs(Erx_backscattered(2,:)).^2;
+Erx_backscattered_s1 = 2*real(conj(Erx_backscattered(1,:)).*Erx_backscattered(2,:)) ./ Erx_backscattered_s0;
+Erx_backscattered_s2 = 2*imag(conj(Erx_backscattered(1,:)).*Erx_backscattered(2,:)) ./ Erx_backscattered_s0;
+Erx_backscattered_s3 = (abs(Erx_backscattered(1,:)).^2 - abs(Erx_backscattered(2,:)).^2) ./ Erx_backscattered_s0;
+
+%plot Erx_forward and Erx_backscattered stokes parameters on the Poincaré sphere, with special markers for first and last points
+figure;
+% Plot the forward Stokes parameters
+plot3(Erx_forward_s1, Erx_forward_s2, Erx_forward_s3, 'r.', 'MarkerSize', 3);
+hold on;
+% Plot the backscattered Stokes parameters
+plot3(Erx_backscattered_s1, Erx_backscattered_s2, Erx_backscattered_s3, 'b.', 'MarkerSize', 3);
+
+% Add special markers for the beginning and end points
+plot3(Erx_forward_s1(1), Erx_forward_s2(1), Erx_forward_s3(1), 'ro', 'MarkerSize', 8, 'LineWidth', 3); % Start point (forward)
+plot3(Erx_forward_s1(end), Erx_forward_s2(end), Erx_forward_s3(end), 'rx', 'MarkerSize', 8, 'LineWidth', 3); % End point (forward)
+plot3(Erx_backscattered_s1(1), Erx_backscattered_s2(1), Erx_backscattered_s3(1), 'bo', 'MarkerSize', 8, 'LineWidth', 3); % Start point (backscattered)
+plot3(Erx_backscattered_s1(end), Erx_backscattered_s2(end), Erx_backscattered_s3(end), 'bx', 'MarkerSize', 8, 'LineWidth', 3); % End point (backscattered)
+
+% Add a sphere for visualization
+%[X, Y, Z] = sphere(50);
+%surf(X, Y, Z, 'FaceAlpha', 0.1, 'EdgeColor', 'none', 'FaceColor', [0.8 0.8 0.8]);
+
+% Set axis properties
+axis equal;
+view(3);
+grid on;
+xlabel('S1');
+ylabel('S2');
+zlabel('S3');
+title('Erx_forward and Erx_backscattered Stokes parameters on the Poincaré sphere');
+hold off;
 
 %% Rx model
+
 rx_start = tic;
 %Power levels at coherent mixer input (Local oscillator & Rx signal)
 LoLevel = single(p.tx.LaserLevel + 10*log10(1-p.tx.couplerFactor));%dBm, Coherent mixer Local oscillator (LO) intensity level. 3dB: 50% coupler at laser source output attenuation
@@ -181,7 +270,7 @@ p.snr_dB = single(10*log10(SNR_elect));%dB expression of SNR per polar as viewed
 if p.rx.coherentdetection_on
     %Coherent receiver emulation (mixer + balanced photo-detection + TIA)
     % Creating LO - Homodyne detection: no detuning / Parameters: LO power and phase noise
-    E_lo = sqrt(P_Lo).*ones(2,p.rx.ErxLen);
+    E_lo = sqrt(P_Lo).*ones(2,p.rx.ErxLen); 
     if p.rx.lasernoise_on
         % CHECK IF LASER PHASE NOISE IS WELL APPLIED AT THE RX SIDE
         laserNoiseMat = r.laserNoiseMat;
@@ -195,17 +284,17 @@ if p.rx.coherentdetection_on
     end
     
     %Computing the 8 optical fields at mixer output
-    E_cr = [Erx(1,:)*1i + E_lo(1,:)*1i; -Erx(1,:) + E_lo(1,:); Erx(1,:) + E_lo(1,:)*1i; Erx(1,:)*1i + E_lo(1,:);... %in W. 1/2*Er(k,:): half of the optical field per polar
+    E_cr = [Erx(1,:)*1i + E_lo(1,:)*1i; -Erx(1,:) + E_lo(1,:); Erx(1,:) + E_lo(1,:)*1i; Erx(1,:)*1i + E_lo(1,:);...   %in W. 1/2*Er(k,:): half of the optical field per polar
         Erx(2,:)*1i + E_lo(2,:)*1i; -Erx(2,:) + E_lo(2,:); Erx(2,:) + E_lo(2,:)*1i; Erx(2,:)*1i + E_lo(2,:)];
     
     % Computing the 8 photo-currents
-    I_cr = p.rx.Rsensi*real(E_cr.*conj(E_cr)); %in A, square of module of each of the 8 fields multiplied by photodiod sensivity
+    I_cr =p.rx.Rsensi*real(E_cr.*conj(E_cr)); %in A, square of module of each of the 8 fields multiplied by photodiod sensivity % p.rx.Rsensi*
     
     % Applying balanced photo-detection
     I_cr = [I_cr(1,:)-I_cr(2,:); I_cr(3,:)-I_cr(4,:); I_cr(5,:)-I_cr(6,:); I_cr(7,:)-I_cr(8,:)];%in A
     
     % Computing voltages after TIA
-    Erx = p.rx.TiaGain*[I_cr(1,:)+1i*I_cr(2,:); I_cr(3,:)+1i*I_cr(4,:)];%in V
+    Erx = p.rx.TiaGain*[I_cr(1,:)+1i*I_cr(2,:); I_cr(3,:)+1i*I_cr(4,:)];%in V 
     
    
     % Blocking DC component (to emulate DC block of each of the 4 balanced PD outputs)
@@ -254,6 +343,7 @@ for k = 1:p.tx.subcarriers
     p.rx.nbOvsRayleighReflectorsSB(k) = p.rx.nbOvsReflectors;%Store nb of detected segments
     p.rx.nbDetectedCodes = floor(size(p.HiTab, 2)/p.rx.nbOvsReflectors);%Nb detected codes
     p.rx.nbDetectedCodesSB(k) = p.rx.nbDetectedCodes;
+    
     fprintf('\n * time spent for parameters extraction (%d subbands case): %.2f seconds',p.tx.subcarriers, toc(corr_start)); tCumul = tCumul + toc(corr_start);
     fprintf('\n*** Rx PROC. OUTPUTS (SUBBAND %d/%d) Nb detected segments:%d/%d  Nb detected codes (%d symbols spacing):%d  Overall elapsed time:%.2f seconds ***\n Cumulated time %.2f seconds\n', ...
         k, p.tx.subcarriers, p.rx.nbOvsReflectors, floor(p.fibre.L/p.fibre.spatialRes), p.tx.Ncode, p.rx.nbDetectedCodes, toc(tStart), tCumul);

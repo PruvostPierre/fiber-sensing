@@ -22,6 +22,7 @@ hLen  = length(gCode)*p.rx.ovsFactor/p.tx.ovsFactor;
 % Process 1st block apart to include time synchro (Rayleigh start & stop positions) prior to Jones matrix extraction
 offsetInStart = 1; blockIdx = 1;
 
+
 % Code spectrum is zero-padded to reach length 'brutBlockLen'
 gCode_fft(:,1) = fft(gCode(1,:).',brutBlockLen);
 gCode_fft(:,2) = fft(gCode(2,:).',brutBlockLen);

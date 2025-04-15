@@ -1,5 +1,5 @@
 %p = genRayleighScattering(p);
-function [p, HiRep] = genRayleighScattering(p, gCodeSingle)
+function [p, Hi] = genRayleighScattering(p, gCodeSingle)
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function that generates the Rayleigh scatterers in the fiber segments 
@@ -20,12 +20,13 @@ p.fibre.scatDistTab = p.fibre.L*(scatDistTab./max(scatDistTab));%in m, table of 
 rng(p.seeds.seed_scatMag);
 p.fibre.scatMagTab = single((p.fibre.MuScatMag+p.fibre.StdScatMag*randn(nbScats,1)));%Table of power attenuation ('am') per scatterer, linear. No fibre attenuation added. 
 
-scatDistTab = p.fibre.scatDistTab;
-scatMagTab = p.fibre.scatMagTab;
+scatDistTab = p.fibre.scatDistTab; %z_m
+scatMagTab = p.fibre.scatMagTab; %a_m
 
 %% 2)Distribution of the scatterers between the fibre segments
 xMaxTab = single(p.fibre.TxSpatialRes*(1:p.fibre.nbSegments)); %Table of starting positions of the fibre segments
 
+%find zm and am of the scatterers in each segment
 for n=1: p.fibre.nbSegments
    tmpIdxTab = find((scatDistTab>xMaxTab(n)-p.fibre.TxSpatialRes) & scatDistTab<=xMaxTab(n));
    nbScatsPerSegment = length(tmpIdxTab);
@@ -46,6 +47,10 @@ if p.fibre.ExcitedSegmentFlag==1 %If a segment is excited, store the magnitude &
 % Calculation of the backscattered optical field on two polarizations
 p.fibre.Ei = single(sum(a_.*exp(1j*4*pi*p.N/p.tx.Lambda*r_)) .* exp(1j*4*pi*p.N/p.tx.Lambda*xMaxTab));%Backscattered optical field per segment
 p.fibre.Ai = single(10.^(1e-3*p.fibre.LossdB*xMaxTab/10));% fibre loss (round-trip) - x0.5 factor since optical field and x2 since round-trip
+p.fibre.Ei(1) = 0.01; %put big reflection at beginning to make sure we detect the beginning of the fiber
+p.fibre.Ei(end) = 0.01; %put big reflection at end to make sure we detect the end of the fiber
+p.fibre.Ai(1) = 5; %put big reflection at beginning to make sure we detect the beginning of the fiber
+p.fibre.Ai(end) = 5; %put big reflection at end to make sure we detect the end of the fiber
 
 %% ADDED Generate Jones Matrices before dynamic update
 [Hi, p] = genJonesMatrices(p); % Compute Jones Matrices

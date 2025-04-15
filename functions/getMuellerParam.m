@@ -12,6 +12,59 @@ function p = getMuellerParam(p,JonesMatTab3D)
 RxCorrXX = p.HiTab(1,1:p.rx.nbOvsSelectedReflectors*p.rx.nbDetectedCodes);
 RxCorrXY = p.HiTab(2,1:p.rx.nbOvsSelectedReflectors*p.rx.nbDetectedCodes);
 
+%Get evolution of beta polarization parameter
+% Number of Jones matrices
+% numJonesMatrices = size(p.HiTab, 2);
+% p.fibre.lengthSegment = floor(numJonesMatrices/p.fibre.nbSegments);
+% % Initialize a 3D array to store the Jones matrices
+% p.pola.JonesMatrices = zeros(2, 2, floor(numJonesMatrices/p.fibre.lengthSegment));
+% 
+% % Loop through each column and extract the Jones matrix
+% for n = 1:numJonesMatrices
+%     p.pola.JonesMatrices(:, :, n) = [p.HiTab(1, n), p.HiTab(2, n); p.HiTab(3, n), p.HiTab(4, n)];
+%     %[U, S, V] = svd(p.pola.JonesMatrices(:, :, n));
+%     %p.pola.JonesMatrices(:, :, n) = U*V';
+%     %singvalues = svd(p.pola.JonesMatrices(:, :, n));
+%     %det_H = det(p.pola.JonesMatrices(:, :, n));
+%     %exp_2jargp_m = det_H/(singvalues(1)^2);
+%     %argp_m = angle(exp_2jargp_m)/2;
+%     %argp_m = angle(det_H)/2;
+%     %p_m = singvalues(1)*exp(1j*argp_m);
+%     %disp(p_m);
+%     p.pola.JonesMatrices(:, :, n) = p.pola.JonesMatrices(:, :, n)*(1/sqrt(det(p.pola.JonesMatrices(:, :, n))));%normalisation
+% end
+% 
+% %list of polarization angle variations
+% p.pola.polaAngle = zeros(1,floor(numJonesMatrices/p.fibre.lengthSegment));
+% p.pola.diffPolaAngle = zeros(1,floor(numJonesMatrices/p.fibre.lengthSegment)-1);
+% p.pola.ProdJonesMatrices = zeros(2,2,floor(numJonesMatrices/p.fibre.lengthSegment));
+% p.pola.eigenvalues = zeros(2, floor(numJonesMatrices/p.fibre.lengthSegment));
+% 
+% %calculate H_roundtrip_z_dagger*H_roundtrip_z' for for each pair of z, z'separated by one fiber segment
+% %calculate the eigenvalues of the product of the Jones matrices for each pair of z, z'separated by one fiber segment
+% k=0;
+% for n = 1:p.fibre.lengthSegment:numJonesMatrices-p.fibre.lengthSegment
+%     k=k+1;
+%     p.pola.ProdJonesMatrices(:,:,k) = p.pola.JonesMatrices(:,:,n)'*p.pola.JonesMatrices(:,:,n+p.fibre.lengthSegment);
+% end
+% 
+% for i=1:size(p.pola.ProdJonesMatrices,3)
+%     p.pola.eigenvalues(:,i)= eig(p.pola.ProdJonesMatrices(:,:,i));
+%     arg_eigenvalues = angle(p.pola.eigenvalues(:,i));
+%     pos_angle = zeros(1,2);
+%     for j=1:2
+%         pos_angle(j) = getAnglePlusMinusPiOver2(arg_eigenvalues(j));
+%     end
+%     p.pola.polaAngle(i) = (1/2)*pos_angle(pos_angle>0); %pola angle
+%     %if p.pola.polaAngle(i) > pi/2-0.01
+%     %    p.pola.polaAngle(i) = p.pola.polaAngle(i) - pi/2;
+%     %end
+% end
+% 
+% for i=1:size(p.pola.ProdJonesMatrices,3)-1
+%     p.pola.diffPolaAngle(i) = p.pola.polaAngle(i+1)-p.pola.polaAngle(i);
+% end
+
 A = [1 0 0 1;1 0 0 -1;0 1 1 0;0 -1j 1j 0];
     time_line = p.rx.nbOvsSelectedReflectors*p.rx.nbDetectedCodes;% size(JonesMatTab3D,3); %time_line/sizeTab = nbDetectedCodes
     Mi = zeros(4,4,time_line);
