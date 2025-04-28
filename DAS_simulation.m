@@ -21,12 +21,12 @@ close all;
 clc;
 
 % Subfunction Path addition
-addpath('D:\fiber-sensing\functions'); %CHANGEME
+addpath('D:\fiber-sensing - back-SOP\functions'); %CHANGEME
 %addpath('D:\Notebook\DAS\DAS model 230924 - Copy');
 
 % Initialize environment and simulation parameters
 p.env = 'exp';              % 'model' for simulation, 'exp' for experimental data
-p.fibre.L = 1000;           % Fiber length in meters [m]
+p.fibre.L = 3000;           % Fiber length in meters [m]
 p.tx.fSymb =50e6;          % Symbol rate [Baud]
 p.tx.ovsFactor = 2;         % Oversampling factor
 p = initialize(p);          % Initialize default parameters
@@ -58,20 +58,22 @@ p.fibre.artificialFading = 1;     % Add artificial fading (1: enabled)
 
 % Transmitter parameters
 p.tx.ProbingMethod = 'Golay';      % Probing sequence type
-p.tx.seqOrderCst = 11;             % Sequence order for Golay codes
-p.tx.nbCodes = 300;                % Number of transmitted codewords
+p.tx.seqOrderCst = 14;             % Sequence order for Golay codes
+p.tx.nbCodes = 100;                % Number of transmitted codewords
 p.tx.dead_zone = 0;
-p.tx.dfLaser = 0;                  % Laser linewidth [Hz]
-p.tx.lasernoise_on = false;        % Add laser noise at the LO
-p.tx.ampli_on = false;             % Enable EDFA amplifier
+p.tx.dfLaser = 100;                  % Laser linewidth [Hz]
+p.tx.lasernoise_on = true;        % Add laser noise at the LO
+p.tx.ampli_on = true;             % Enable EDFA amplifier
 
 % Receiver parameters
-p.rx.awgnRX_on = false;            % Add AWGN at the receiver
+p.rx.awgnRX_on = true;            % Add AWGN at the receiver
 p.rx.offset_ratio = 1;             % Offset ratio after correlation (minimum: 1)
 % Display parameters
 p.displ.fIdx = 10;                 % Figure index for display
 p.displ.powerIndication = 1;       % Display power information (1: enabled)
-
+p.displ.lowResolFactor = 10;
+p.displ.polarBirefringence = 1; % Display birefringence information (1: enabled)
+p.displ.polarHeatMaps = 1; % Display heat maps (1: enabled)
 
 %% Seed Generation (Model Only)
 % Generate random seeds for reproducibility
@@ -90,21 +92,28 @@ p.stockStd = [];                  % Placeholder for standard deviation of differ
 p.stockabsDet = [];               % Placeholder for determinant values of Jones matrices
 r.threshold_comb_stock = [];      % Placeholder for detection thresholds
 r.nbRemovedLastSegments = 1;      % Segments removed from analysis (default: 1)
-
+p.pola.birefringenceError=[];     % Placeholder for birefringence MSE results
+p.pola.stdBirefringence=[];       % Placeholder for birefringence standard deviation results
 %% Main Simulation Loop
+
 for n = 1:p.stat_NB
     % Simulate transmission, fiber propagation, reception, and Jones matrix estimation
     [p, r] = RayleighModel(p, r);
-
     % Post-process data: differential phase, filtering, SOP calculation
     [p, r] = getPostProcessingfromJones(p, r);
-
     % Store results for analysis
+    p.pola.birefringenceError = [p.pola.birefringenceError, p.pola.mseSeg]; % Store birefringence error for analysis
+    p.pola.stdBirefringence = [p.pola.stdBirefringence, p.pola.stdBirefringenceSelect]; % Store birefringence standard deviation for analysis
     p.stockStd = cat(2, p.stockStd, p.stdDiffPhiTabSelect(2:end-1));
     p.stockabsDet = cat(2, p.stockabsDet, r.selectAbsDetTab_nonorm(2:end-1));
     r.threshold_comb_stock = cat(2, r.threshold_comb_stock, r.threshold_comb);
 end
 
+%% Save birefringence data to files to get values 100 codes by 100 codes before analyzing with plots_data_car : change time index in data_car in RayleighModel (interesting part between 800 and 1300)
+birefringence = p.pola.birefringenceJonesMatricesSelect;
+birefringenceGen = p.pola.birefringenceJonesMatricesGen;
+save('D:\fiber-sensing - back-SOP\saved data\birefringenceData2804_1.mat', 'birefringence');
+save('D:\fiber-sensing - back-SOP\saved data\birefringenceGenData2804_1.mat', 'birefringenceGen');
+
 %% Display Results
-% Visualize Rayleigh detection analysis
 p = displayRayleighDetection(p, r);

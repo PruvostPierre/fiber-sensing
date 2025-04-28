@@ -64,49 +64,33 @@ RayStart_time = tic; % Start timing Rayleigh model generation
 %p = genRayleighScattering(p);
 [p, Hi] = genRayleighScattering(p, gCodeSingle);
 
+%Car passage data 
+data_car = data_loading('car passage data\car_filt_high_reduced.mat');
+data_car = repelem(data_car, 3, 1)/3; %repeat in space to match approx 1m per segment
+
 %add dynamic birefringence event 
-p.pola.codeIdx = 100;
-p.pola.codeIdx2 = 150;
-p.pola.segIdx = 550;
-p.pola.segIdx2 = 700;
-duration = 20;
-duration2 = 30;
+p.pola.segIdx = 1500:(1500 + size(data_car, 1) - 1); % list of segments where the birefringence event occurs
+duration = p.tx.nbCodes; %time duration of the event in number of codes : if we want to apply 2 events of different duration, do zero-padding to have same size
 p.pola.codeLength = size(gCodeSingle, 2);
 if p.pola.betaEvent ==1
-    HiEvent = birefringenceEvent(p, p.pola.segIdx+1, 0.05); %add a sharp change in beta at segment segIdx
-    HiEvent2 = birefringenceEvent(p, p.pola.segIdx2+1, 0.05); %add a sharp change in beta at segment segIdx2
-    %HiRep : repeat Hi from first code to codeIdx, then repeat HiEvent from codeIdx to codeIdx+duration and then repeat Hi from codeIdx+duration to end
-    HiRep = [repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.pola.codeIdx-1), ...
-            repmat([HiEvent, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, duration), ...
-            repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes-p.pola.codeIdx-duration)];
-    p.pola.HiGen = [repmat(Hi, 1, p.pola.codeIdx-1), ...
-            repmat(HiEvent, 1, duration), ...
-            repmat(Hi, 1, p.tx.nbCodes-p.pola.codeIdx-duration)];
-else
-    HiRep = [repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes)];
+    %t = linspace(0, (p.tx.nbCodes-1)*p.tx.Tcode, p.tx.nbCodes); % Time vector for sine wave
+    %data = sin(2 * pi * 50 * t)*0.2; % Generate smooth sinusoidal signal with 200 Hz frequency
+    for i=1:duration
+        data_car_i = squeeze(data_car(:, 800-1+i)); % Extract the data for all segments, for the i-th code (from 800 cause highest disturbance), change the index to get different data (in time)
+        if i==1
+            HiEvent = birefringenceEvent(p, p.pola.segIdx+1, data_car_i); %add a change in beta at segment segIdx %to put sine wave instead of data_car_i, replace data_car_i by data(i)
+            p.pola.HiGen = HiEvent;
+            HiRep = [HiEvent, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))]; %add zeros to match the size of gCodeSingle
+        else
+            HiEvent_code = birefringenceEvent(p, p.pola.segIdx+1, data_car_i);
+            p.pola.HiGen = [p.pola.HiGen, HiEvent_code]; %store for analysis : comparison between estimation and real data
+            HiEvent_code = [HiEvent_code, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))]; %add zeros to match the size of gCodeSingle
+            HiRep = [HiRep, HiEvent_code]; %add a change in beta at segment segIdx
+        end
+    end
 end
+
 r.HiGen = HiRep;
-
-%Do convolution of the probing sequence with the fiber impulse response only in forward
-HiRep_forward = repmat([p.fibre.Hi_forward, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes);
-
-% Generate Jones matrices representing random fiber rotations
-%[Hi, p] = genJonesMatrices(p);
-%r.HiGen = HiRep;
-
-% Ensure Jones matrices match the size of the probing sequence for convolution
-%HiRep = repmat([Hi, zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))], 1, p.tx.nbCodes);
-
-% Handle dynamic fiber model by updating Jones matrices for excited segments
-%if p.fibre.ExcitedSegmentFlag == 1
-%    [p, HiRep] = genDynamicSegt(p, HiRep, p.fibre.ExcitedSegmentIdx(1), ...
-%        p.fibre.ExcitedStrainMax(1), p.fibre.ExcitedF_event(1), ...
-%        p.fibre.ExcitedDynEvolution(1));
-%end
-
-%figure(135);
-%plot(unwrap(angle(HiRep(1,:))));
-%title('Phase evolution of HiRep');
 
 % Display the time taken for Rayleigh model generation
 fprintf('\n* Time to generate Rayleigh scattering: %.2f seconds', toc(RayStart_time));
@@ -167,80 +151,25 @@ clear P_gcode P_gcode1 Gcode_level Gcode_level1 EDFA_noise N_ase amplinoise_star
 
 conv_start = tic;
 
-Erx = Etx; 
-%create a test signal : jones vector of polarization 45°  
-Etx_test = 1/sqrt(2)*[1; 1]; % Ensure Jones vector is a column vector and normalized
-% Propagate Etx_test through the forward and backward models
-Erx = conv_fft(Erx, HiRep(1,1:2:end),HiRep(1,2:2:end),HiRep(2,1:2:end),HiRep(2,2:2:end));
+Etx = [zeros(2, size(gCodeSingle, 2)), Etx, zeros(2, size(gCodeSingle, 2))]; % Add zeros to the left and right of the signal to do convolution of each code : the code itself and the neighboring codes (one on the left and one on the right) to account for the mixing between the codes
+% Convolution of the transmitted signal with the fiber impulse response
+for i=1:p.tx.nbCodes
+    Hi_code =  [p.pola.HiGen(:, (i-1)*2*p.fibre.nbSegments+1:i*2*p.fibre.nbSegments), zeros(2, 2 * (size(gCodeSingle, 2) - p.fibre.nbSegments))]; % Jones matrix for the current code
+    if i==1
+        conv_mix = conv_fft(Etx(:, 1:3*length(gCode)), Hi_code(1,1:2:end), Hi_code(1,2:2:end), Hi_code(2,1:2:end), Hi_code(2,2:2:end)); % Convolve with the first first code and second code (and zeros on the left)
+        Erx = conv_mix(:, length(gCode)+1:2*length(gCode)); % keep only part concerning the current code
+    elseif i==p.tx.nbCodes
+        conv_mix = conv_fft(Etx(:, (i-3)*length(gCode)+1:i*length(gCode)), Hi_code(1,1:2:end), Hi_code(1,2:2:end), Hi_code(2,1:2:end), Hi_code(2,2:2:end)); % Convolve with the last code and second to last code (and zeros on the right)
+        Erx = [Erx, conv_mix(:, length(gCode)+1:2*length(gCode))]; % keep only part concerning the current code
+    else
+        % Convolve with the current code and the two neighboring codes
+        conv_mix = conv_fft(Etx(:, (i-2)*length(gCode)+1:(i+1)*length(gCode)), Hi_code(1,1:2:end), Hi_code(1,2:2:end), Hi_code(2,1:2:end), Hi_code(2,2:2:end));
+        Erx = [Erx, conv_mix(:, length(gCode)+1:2*length(gCode))]; % keep only part concerning the current code
+        
+    end
+end
+
 fprintf(' \n * time to apply convolution - transmission %.2f seconds',toc(conv_start)); tCumul = tCumul + toc(conv_start);
-
-%% Display forward and backscattered SOP on sphere
-Erx_backscattered = zeros(2, p.fibre.nbSegments+1); % Initialize Erx_backscattered
-Hi_test = reshape(p.fibre.Hi, 2, 2, p.fibre.nbSegments);
-Erx_backscattered(:, 1) = Etx_test; 
-for i = 2:p.fibre.nbSegments+1
-    Erx_backscattered(:, i) = Hi_test(:, :, i-1) * Etx_test; % Apply the Jones matrix to the test signal
-end
-Erx_forward = zeros(2, p.fibre.nbSegments+1); % Initialize Erx_forward
-Hi_test_forward = reshape(p.fibre.Hi_forward, 2, 2, p.fibre.nbSegments);
-Erx_forward(:, 1) = Etx_test;
-for i = 2:p.fibre.nbSegments+1
-    Erx_forward(:, i) = Hi_test_forward(:, :, i-1) * Etx_test; % Apply the Jones matrix to the test signal
-end
-
-stokes(double(Erx_backscattered(:, 1)));
-hold on;
-stokes(double(Erx_forward(:, 1)));
-hold on;
-stokes(double(Erx_backscattered(:, end)));
-hold on;
-stokes(double(Erx_forward(:, end)));
-
-
-Erx = Erx(:,1:size(gCodeSingle,2)*p.tx.nbCodes);
-%Erx_backscattered = conv_fft(Etx_test, p.fibre.Hi(1,1:2:end),p.fibre.Hi(1,2:2:end),p.fibre.Hi(2,1:2:end),p.fibre.Hi(2,2:2:end));
-%Erx_forward = conv_fft(Etx_test, p.fibre.Hi_forward(1,1:2:end),p.fibre.Hi_forward(1,2:2:end),p.fibre.Hi_forward(2,1:2:end),p.fibre.Hi_forward(2,2:2:end));
-
-%plot Erx and Erx_forward stokes parameters on the poincaré sphere for index 10
-
-%convert Jones vector to stokes parameters
-Erx_forward_s0 = abs(Erx_forward(1,:)).^2 + abs(Erx_forward(2,:)).^2;
-Erx_forward_s1= 2*real(conj(Erx_forward(1, :)).*Erx_forward(2,:))./Erx_forward_s0;
-Erx_forward_s2 = 2*imag(conj(Erx_forward(1, :)).*Erx_forward(2,:))./Erx_forward_s0;
-Erx_forward_s3 = (abs(Erx_forward(1,:)).^2 - abs(Erx_forward(2,:)).^2)./Erx_forward_s0;
-
-Erx_backscattered_s0 = abs(Erx_backscattered(1,:)).^2 + abs(Erx_backscattered(2,:)).^2;
-Erx_backscattered_s1 = 2*real(conj(Erx_backscattered(1,:)).*Erx_backscattered(2,:)) ./ Erx_backscattered_s0;
-Erx_backscattered_s2 = 2*imag(conj(Erx_backscattered(1,:)).*Erx_backscattered(2,:)) ./ Erx_backscattered_s0;
-Erx_backscattered_s3 = (abs(Erx_backscattered(1,:)).^2 - abs(Erx_backscattered(2,:)).^2) ./ Erx_backscattered_s0;
-
-%plot Erx_forward and Erx_backscattered stokes parameters on the Poincaré sphere, with special markers for first and last points
-figure;
-% Plot the forward Stokes parameters
-plot3(Erx_forward_s1, Erx_forward_s2, Erx_forward_s3, 'r.', 'MarkerSize', 3);
-hold on;
-% Plot the backscattered Stokes parameters
-plot3(Erx_backscattered_s1, Erx_backscattered_s2, Erx_backscattered_s3, 'b.', 'MarkerSize', 3);
-
-% Add special markers for the beginning and end points
-plot3(Erx_forward_s1(1), Erx_forward_s2(1), Erx_forward_s3(1), 'ro', 'MarkerSize', 8, 'LineWidth', 3); % Start point (forward)
-plot3(Erx_forward_s1(end), Erx_forward_s2(end), Erx_forward_s3(end), 'rx', 'MarkerSize', 8, 'LineWidth', 3); % End point (forward)
-plot3(Erx_backscattered_s1(1), Erx_backscattered_s2(1), Erx_backscattered_s3(1), 'bo', 'MarkerSize', 8, 'LineWidth', 3); % Start point (backscattered)
-plot3(Erx_backscattered_s1(end), Erx_backscattered_s2(end), Erx_backscattered_s3(end), 'bx', 'MarkerSize', 8, 'LineWidth', 3); % End point (backscattered)
-
-% Add a sphere for visualization
-%[X, Y, Z] = sphere(50);
-%surf(X, Y, Z, 'FaceAlpha', 0.1, 'EdgeColor', 'none', 'FaceColor', [0.8 0.8 0.8]);
-
-% Set axis properties
-axis equal;
-view(3);
-grid on;
-xlabel('S1');
-ylabel('S2');
-zlabel('S3');
-title('Erx_forward and Erx_backscattered Stokes parameters on the Poincaré sphere');
-hold off;
 
 %% Rx model
 
