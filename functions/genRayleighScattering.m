@@ -49,8 +49,8 @@ p.fibre.Ei = single(sum(a_.*exp(1j*4*pi*p.N/p.tx.Lambda*r_)) .* exp(1j*4*pi*p.N/
 p.fibre.Ai = single(10.^(1e-3*p.fibre.LossdB*xMaxTab/10));% fibre loss (round-trip) - x0.5 factor since optical field and x2 since round-trip
 p.fibre.Ei(1) = 0.01; %put big reflection at beginning to make sure we detect the beginning of the fiber
 p.fibre.Ei(end) = 0.01; %put big reflection at end to make sure we detect the end of the fiber
-p.fibre.Ai(1) = 5; %put big reflection at beginning to make sure we detect the beginning of the fiber
-p.fibre.Ai(end) = 5; %put big reflection at end to make sure we detect the end of the fiber
+p.fibre.Ai(1) = 3; %put big reflection at beginning to make sure we detect the beginning of the fiber
+p.fibre.Ai(end) = 3; %put big reflection at end to make sure we detect the end of the fiber
 
 %% ADDED Generate Jones Matrices before dynamic update
 [Hi, p] = genJonesMatrices(p); % Compute Jones Matrices

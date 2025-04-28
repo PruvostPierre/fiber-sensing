@@ -149,6 +149,17 @@ elseif strcmpi(p.env,'model') %We know where the fiber response will be in simul
     EstimatedFiberLength = nbSegments*p.fibre.spatialRes/p.rx.ovsFactor; % (StopX-StartX)*p.fibre.spatialRes*p.tx.fSymb/p.rx.fSamp;
 end
 
+if (p.rx.offset_ratio-floor(p.rx.offset_ratio))
+    StartX = 1+round(p.rx.offset_ratio-floor(p.rx.offset_ratio))*ovsCodeLength;
+    StopX =  round(p.rx.offset_ratio-floor(p.rx.offset_ratio))*ovsCodeLength;
+else
+    StartX = 1;
+    StopX =  p.fibre.nbSegments;
+end
+    
+nbSegments = StopX-StartX+1;
+EstimatedFiberLength = nbSegments*p.fibre.spatialRes/p.rx.ovsFactor; % (StopX-StartX)*p.fibre.spatialRes*p.tx.fSymb/p.rx.fSamp;
+
 p.rx.nbOvsReflectors = nbSegments;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

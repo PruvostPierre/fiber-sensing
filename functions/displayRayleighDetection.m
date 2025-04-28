@@ -827,46 +827,105 @@ if p.displ.polar && p.displ.polarparam
     legend('StDv of phase difference bw pola  x and y \Delta\Phi','StDv of ellipticity e','StDv of \Psi orientation of fast axis');
 end
 
-%% Display polarimetric features
-% Add this code at the end of your getMuellerParam function
+%% Display birefringence estimation features
 
-% Plotting the standard deviation of differential polarization parameters
-% figure;
-% subplot(3,1,1);
-% plot(p.pola.stddiffPolaS1);
-% title('Standard Deviation of Differential Polarization S1');
-% xlabel('Reflector Index');
-% ylabel('Standard Deviation');
-% 
-% subplot(3,1,2);
-% plot(p.pola.stddiffPolaS2);
-% title('Standard Deviation of Differential Polarization S2');
-% xlabel('Reflector Index');
-% ylabel('Standard Deviation');
-% 
-% subplot(3,1,3);
-% plot(p.pola.stddiffPolaS3);
-% title('Standard Deviation of Differential Polarization S3');
-% xlabel('Reflector Index');
-% ylabel('Standard Deviation');
-% 
-% %Plotting the polarization angle beta between two points
-% figure;
-% plot(1:length(p.pola.polaAngle), p.pola.polaAngle);
-% title('Beta angle for a small region');
-% xlabel('Reflector Index');
-% ylabel('Angle (rad)');
-% 
-% figure;
-% plot(1:length(p.pola.polaAngle), p.pola.polaAngle*180/pi, '+');
-% title('Beta angle for each segment');
-% xlabel('Segment Index');
-% ylabel('Angle (degree)');
-% 
-% %Plotting the polarization differential angle beta between two points
-% figure;
-% plot(1:length(p.pola.diffPolaAngle), p.pola.diffPolaAngle);
-% title('Differential Beta angle for a small region');
+if p.displ.polarBirefringence
+    % Plot the birefringence evolution through the selected segments for one code (150) for instance
+    figure;
+    for codeIdx = 150:min(150, p.rx.nbDetectedCodes)
+        plot(1:p.rx.nbOvsSelectedReflectors-1, abs(p.pola.birefringenceJonesMatricesSelect(1, :, codeIdx)), 'r--');
+        hold on;
+        plot(1:p.rx.nbOvsSelectedReflectors-1, abs(p.pola.birefringenceJonesMatricesGenSelect(1, :, codeIdx)), 'g');
+        title(['Absolute Birefringence Evolution through Segments for Code ', num2str(codeIdx)]);
+        legend('Estimated Matrices', 'Generated Matrices');
+        xlabel('Segment Index');
+        ylabel('Birefringence (radians)');
+        grid on;
+    end
+
+    %plot the mean squared error of birefringence estimation
+    figure;
+    plot(1:p.rx.nbOvsSelectedReflectors-1, p.pola.mseSeg, 'b-o');
+    xlabel('Segment Index', 'FontSize', 14);
+    ylabel('Mean Squared Error of Birefringence Estimation (radians)', 'FontSize', 14);
+
+    %standard deviation on best reflectors
+    figure;
+    x_axis_meters = (1:p.rx.nbOvsSelectedReflectors-1) * 10.25; % Convert reflector indices to meters
+    p.pola.stdBirefringenceSelect = std(abs(p.pola.birefringenceJonesMatricesSelect(1, :, 1:end)), 0, 3); % Compute std across time (3rd dimension)
+    plot(x_axis_meters, p.pola.stdBirefringenceSelect, 'b-o');
+    %title('Standard Deviation of Birefringence Across Time for selected reflectors only');
+    xlabel('Distance (meters)', 'FontSize', 14);
+    ylabel('Standard Deviation of Birefringence (radians)','FontSize', 14);
+    grid on;
+
+    %standard deviation of generated birefringence, on all segments (not just selected)
+    figure;
+    x_axis_meters = (1:p.rx.nbOvsReflectors-1) * 1.025;
+    p.pola.stdBirefringenceGen = std(p.pola.birefringenceJonesMatricesGen(1, :, 1:end), 0, 3); % Compute std across time (3rd dimension)
+    plot(x_axis_meters, p.pola.stdBirefringenceGen, 'b-o');
+    title('Standard Deviation of Birefringence Across Time for selected reflectors only');
+    xlabel('Distance (meters)', 'FontSize', 14);
+    ylabel('Standard Deviation of Birefringence (radians)', 'FontSize', 14);
+    grid on;
+
+    %plot birefringence of disturbed segment + neighboring segments
+    figure;
+    for segIdx = -2:min(2, p.rx.nbOvsSelectedReflectors-1)
+        plot(1:p.rx.nbDetectedCodes-1, squeeze(abs(p.pola.birefringenceJonesMatricesSelect(1,floor(p.pola.segIdx(:, 1)/10)+segIdx,2:end))));
+        xlabel('Code Index', 'FontSize', 14);
+        ylabel('|\Delta\beta|(rad)', 'FontSize', 14);
+        grid on;
+        hold on;
+    end
+    legend(arrayfun(@(x) ['Segment ', num2str(floor(p.pola.segIdx(:, 1)/10) + x)], -2:min(2, p.rx.nbOvsSelectedReflectors-1), 'UniformOutput', false));
+
+    %plot applied and estimated birefringence of first disturbed segment 
+    figure;
+    for segIdx = p.pola.segIdx(:, 1):min(p.pola.segIdx(:, 1), p.rx.nbOvsReflectors-1)
+        plot(1:p.rx.nbDetectedCodes-1, squeeze(p.pola.birefringenceJonesMatricesGen(1,segIdx,1:end-1)));
+        hold on;
+        plot(1:p.rx.nbDetectedCodes-1, squeeze(abs(p.pola.birefringenceJonesMatricesSelect(1,floor(segIdx/10),1:end-1))));
+        legend('Generated Matrices', 'Estimated Matrices');
+        title(['Birefringence through Codes for Segment ', num2str(segIdx)]);
+        xlabel('Code Index');
+        ylabel('Birefringence (radians)');
+        grid on;
+    end
+
+    if p.displ.polarHeatMaps==1
+        % Custom red-white-blue colormap
+        n = 256;
+        rwb = [linspace(0,1,n/2)', linspace(0,1,n/2)', ones(n/2,1); ...
+            ones(n/2,1), linspace(1,0,n/2)', linspace(1,0,n/2)'];
+
+        data_car = data_loading('car passage data\car_filt_high_reduced.mat');
+        data_car = repelem(data_car, 3, 1)/3;
+        
+        figure;
+        x_axis_meters = (1:p.rx.nbOvsReflectors-1) * 1.025;
+        birefringenceHeatMap = squeeze((abs(p.pola.birefringenceJonesMatricesGen(:,:,1:end))) - mean(abs(p.pola.birefringenceJonesMatricesGen(:,:,1:end)), 3)); % Extract birefringence data
+        imagesc(x_axis_meters, 1:p.rx.nbDetectedCodes, (birefringenceHeatMap.')); % Transpose for correct orientation
+        colorbar;
+        colormap(rwb); % Apply custom colormap
+        xlabel('Distance (meters)');
+        ylabel('Code Index');
+        title('Birefringence Heat Map : generated matrices');
+        grid on;
+
+        figure;
+        x_axis_meters = (1:p.rx.nbOvsSelectedReflectors-1) * 10.25;
+        birefringenceHeatMap = squeeze((abs(p.pola.birefringenceJonesMatricesSelect(:,:,1:end)))- mean(abs(p.pola.birefringenceJonesMatricesSelect(:,:,1:end)), 3)); % Extract birefringence data
+        imagesc(x_axis_meters, 1:p.rx.nbDetectedCodes, (birefringenceHeatMap.')); % Transpose for correct orientation
+        colorbar;
+        colormap(rwb); % Apply custom colormap
+        xlabel('Distance (meters)');
+        ylabel('Code Index');
+        title('Birefringence Heat Map : estimated matrices');
+        grid on;
+    end
+end
+
 %% Display alarms (?)
 if p.displ.alarms
     kTab=find(p.stdDiffPhiTabSelect>p.displ.stdPhiAlarmThres);%Get indices of alarm

@@ -13,7 +13,7 @@ function p=fcorrAndGetJones(gCode, brutBlockLen, p)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 global Erx;
-
+disp(size(Erx))
 p.rx.ErxLen = brutBlockLen; 
 Erx = Erx(1:brutBlockLen,:); 
 
@@ -22,13 +22,20 @@ hLen  = length(gCode)*p.rx.ovsFactor/p.tx.ovsFactor;
 % Process 1st block apart to include time synchro (Rayleigh start & stop positions) prior to Jones matrix extraction
 offsetInStart = 1; blockIdx = 1;
 
-
+%gCode = repmat(gCode, 1, p.tx.nbCodes);
 % Code spectrum is zero-padded to reach length 'brutBlockLen'
 gCode_fft(:,1) = fft(gCode(1,:).',brutBlockLen);
 gCode_fft(:,2) = fft(gCode(2,:).',brutBlockLen);
 
 tmpCorr = fctCorrBlock(Erx(offsetInStart:1:offsetInStart+brutBlockLen-1,:), gCode_fft, hLen,p.rx.offset_ratio);
 
+%for i=1:p.tx.nbCodes
+%    if i==1
+%        tmpCorr = fctCorrBlock(Erx(offsetInStart:1:length(gCode),:), gCode_fft, hLen,p.rx.offset_ratio);
+%    else
+%        tmpCorr = [tmpCorr, fctCorrBlock(Erx(offsetInStart+(i-1)*length(gCode):1:i*length(gCode),:), gCode_fft, hLen,p.rx.offset_ratio)];
+%    end
+%end
 netBlockLen = length(tmpCorr);
 nbFullBlocks = floor((p.rx.ErxLen-(hLen-1))/netBlockLen);
 nbRemainder = mod(p.rx.ErxLen-(hLen-1),netBlockLen);

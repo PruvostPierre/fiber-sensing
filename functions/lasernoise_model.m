@@ -15,7 +15,7 @@ pn_x = sqrt(4*pi*(p.tx.dfLaser/2)/p.tx.fSymb).*cumsum(randn(1,codelength));%(dfL
 noiseSeq = exp(1i*pn_x);%The phase noise vector (Lorentzian model)
 r.laserNoiseMat = repmat(noiseSeq,2,1);%Duplicate phase noise vector for the 2 polars
 
- gCodeRep = gCodeRep.*r.laserNoiseMat(:,1:codelength ); %Apply laser phase noise to the transmitted signal (same noise for both polar)
+gCodeRep = gCodeRep.*r.laserNoiseMat(:,1:codelength); %Apply laser phase noise to the transmitted signal (same noise for both polar)
 figure;
 subplot(2,1,1);
 plot(angle(noiseSeq)); title('Phase Noise Over Time'); xlabel('Samples'); ylabel('Phase (rad)');

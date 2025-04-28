@@ -20,49 +20,12 @@ detJonesTab = p.HiTab(1,1:nbNetUpJonesMat).*p.HiTab(4,1:nbNetUpJonesMat)-p.HiTab
 detJonesTab = reshape(detJonesTab,p.rx.nbOvsReflectors,p.rx.nbDetectedCodes);
 listJonesMatrices = [p.HiTab(1,1:nbNetUpJonesMat); p.HiTab(2,1:nbNetUpJonesMat); p.HiTab(3,1:nbNetUpJonesMat); p.HiTab(4,1:nbNetUpJonesMat)];
 
-%disp(size(listJonesMatrices));
+%% Calculation of the birefringence for each segment, no decimation
+
+% Estimated matrices
 listJonesMatrices = reshape(listJonesMatrices, 4, p.rx.nbOvsReflectors,p.rx.nbDetectedCodes);
-%disp(size(listJonesMatrices));
-%calculate product of two consecutive jones matrices Hdagger*H for each code
-% Initialize the product matrix
-productJonesMatrices = zeros(4, p.rx.nbOvsReflectors-1, p.rx.nbDetectedCodes);
-p.pola.estimate_pm = zeros(1, p.rx.nbOvsReflectors, p.rx.nbDetectedCodes);
+productJonesMatrices = zeros(4, p.rx.nbOvsReflectors-1, p.rx.nbDetectedCodes); %product matrix for eigenvalue calculation
 
-%estimate of phasor
-for codeIdx = 1:p.rx.nbDetectedCodes
-    % Loop through each segment
-    for segIdx = 1:p.rx.nbOvsReflectors
-        JonesMatrix = reshape(listJonesMatrices(:, segIdx, codeIdx), 2, 2);
-        p.pola.estimate_pm(:, segIdx, codeIdx) = sqrt(det(JonesMatrix));
-    end
-end 
-
-%estimated phasor for generated matrices
-p.pola.estimate_pmGen = zeros(1, p.fibre.nbSegments);
-listJonesMatricesGen = reshape(p.HiGen, 2, 2, p.fibre.nbSegments);
-
-% Loop through each segment
-for segIdx = 1:p.fibre.nbSegments
-    JonesMatrix = listJonesMatricesGen(:, :, segIdx);
-    p.pola.estimate_pmGen(:, segIdx) = sqrt(det(JonesMatrix));
-end
-
-
-%plot estimated phasor (after tranmission and reception), phasor of HiGen, and true phasor for code 100
-
-figure;
-plot(1:p.rx.nbOvsReflectors, abs(p.pola.estimate_pm(1,:,100)), 'r--');
-hold on;
-plot(1:p.fibre.nbSegments, abs(p.pola.estimate_pmGen(1,:)), 'g--');
-hold on;
-plot(1:p.fibre.nbSegments, abs(p.fibre.Ei(1,1:p.fibre.nbSegments).*p.fibre.Ai(1, 1:p.fibre.nbSegments)), 'b+');
-title('Estimated and True Phasor for Code 100');
-legend('Estimated Phasor', 'Estimated Phasor for HiGen', 'True Phasor');
-
-
-
-
-%plotn
 % Loop through each code
 for codeIdx = 1:p.rx.nbDetectedCodes
     % Loop through each segment
@@ -70,68 +33,44 @@ for codeIdx = 1:p.rx.nbDetectedCodes
         % Extract the current and next Jones matrices
         currentJonesMatrix = reshape(listJonesMatrices(:, segIdx, codeIdx), 2, 2);
         nextJonesMatrix = reshape(listJonesMatrices(:, segIdx+1, codeIdx), 2, 2);
-        %disp(size(currentJonesMatrix));
         % Calculate the determinants
         detCurrent = currentJonesMatrix(1,1)*currentJonesMatrix(2,2) - currentJonesMatrix(1,2)*currentJonesMatrix(2,1);
         detNext = nextJonesMatrix(1,1)*nextJonesMatrix(2,2) - nextJonesMatrix(1,2)*nextJonesMatrix(2,1);
-
-
-        
         % Normalize the matrices by the square root of their determinants
-        currentJonesMatrix = currentJonesMatrix/sqrt(detCurrent);%(sqrt(abs(detCurrent))*exp(0.5*1j*angle(detCurrent)));
-        nextJonesMatrix = nextJonesMatrix/sqrt(detNext);%(sqrt(abs(detNext))*exp(0.5*1j*angle(detNext)));
-        %disp('current');
-        %disp(currentJonesMatrix);
-        %disp('next');
-        %disp(nextJonesMatrix);
-        %[Uc, Sc, Vc] = svd(currentJonesMatrix);
-        %denoised_currentJonesMatrix = Uc*Vc';
-        %[Un, Sn, Vn] = svd(nextJonesMatrix);
-        %denoised_nextJonesMatrix = Un*Vn';
-        %disp(det(currentJonesMatrix));
+        currentJonesMatrix = currentJonesMatrix/sqrt(detCurrent);
+        nextJonesMatrix = nextJonesMatrix/sqrt(detNext);
         % Calculate the product of the dagger of the current matrix and the next matrix
         productMatrix = currentJonesMatrix' * nextJonesMatrix;
-        
-        % Store the result
         productJonesMatrices(:, segIdx, codeIdx) = productMatrix(:);
     end
 end
-disp(det(reshape(listJonesMatrices(:,1,1), 2, 2)));
+
 % Initialize the eigenvalues matrix
 p.pola.eigenvaluesJonesMatrices = zeros(2, p.rx.nbOvsReflectors-1, p.rx.nbDetectedCodes);
 p.pola.birefringenceJonesMatrices = zeros(1, p.rx.nbOvsReflectors-1, p.rx.nbDetectedCodes);
-p.pola.birefringenceJonesMatrices2 = zeros(1, p.rx.nbOvsReflectors-1, p.rx.nbDetectedCodes);
 % Loop through each code
 for codeIdx = 1:p.rx.nbDetectedCodes
     % Loop through each segment
     for segIdx = 1:p.rx.nbOvsReflectors-1
         % Extract the product Jones matrix
         productMatrix = reshape(productJonesMatrices(:, segIdx, codeIdx), 2, 2);
-        %productMatrix = productMatrix/sqrt(det(productMatrix));%(sqrt(abs(det(productMatrix)))*exp(0.5*1j*angle(det(productMatrix)));
         % Compute the eigenvalues
         eigenvalues = eig(productMatrix);
-        
-
         % Store the eigenvalues
         p.pola.eigenvaluesJonesMatrices(:, segIdx, codeIdx) = eigenvalues;
-
-        %sin2beta = (1/(2i))*(eigenvalues(1) - eigenvalues(2));
-        %p.pola.birefringenceJonesMatrices2(:, segIdx, codeIdx) = asin(sin2beta);
-        %disp("eigenvalues");
-        %disp(eigenvalues);
-        p.pola.birefringenceJonesMatrices(:, segIdx, codeIdx) =  (1/2)*getAnglePlusMinusPiOver2(angle(eigenvalues(1))) - (1/2)*getAnglePlusMinusPiOver2(angle(eigenvalues(2)));%(1/2)*((angle(eigenvalues(1)))) - (angle(eigenvalues(2))); 
+        p.pola.birefringenceJonesMatrices(:, segIdx, codeIdx) =  (1/2)*getAnglePlusMinusPiOver2(angle(eigenvalues(1))) - (1/2)*getAnglePlusMinusPiOver2(angle(eigenvalues(2))); %restrict to [-pi/2, pi/2] to avoid sign ambiguity
     end
 end
 
-% Process the generated matrices stored in p.HiGen
+% Generated matrices
 % Reshape p.HiGen into 2x2 matrices for each segment
-p.pola.HiGen = reshape(p.pola.HiGen, 4, p.fibre.nbSegments*p.rx.nbDetectedCodes);
+p.pola.HiGen = reshape(p.pola.HiGen, 4, p.fibre.nbSegments*p.tx.nbCodes);
 listJonesMatricesGen = [p.pola.HiGen(1,1:nbNetUpJonesMat); p.pola.HiGen(2,1:nbNetUpJonesMat); p.pola.HiGen(3,1:nbNetUpJonesMat); p.pola.HiGen(4,1:nbNetUpJonesMat)];
 
-%disp(size(listJonesMatrices));
 listJonesMatricesGen = reshape(listJonesMatricesGen, 4, p.rx.nbOvsReflectors,p.rx.nbDetectedCodes);
 % Initialize the product matrix for generated matrices
 productJonesMatricesGen = zeros(2, 2, p.fibre.nbSegments - 1, p.rx.nbDetectedCodes);
+
 for codeIdx=1:p.rx.nbDetectedCodes
     % Loop through each segment to calculate the product of consecutive matrices
     for segIdx = 1:p.fibre.nbSegments - 1
@@ -177,117 +116,10 @@ for codeIdx=1:p.rx.nbDetectedCodes
             (1/2) * getAnglePlusMinusPiOver2(angle(eigenvaluesGen(2)));
     end
 end
-% Plot the birefringence evolution through the segments for the generated matrices, for code 100
-figure;
-plot(1:p.fibre.nbSegments-1, abs(p.pola.birefringenceJonesMatricesGen(1, :, 100)), 'mo');
-hold on;
-plot(2*(abs(p.fibre.evolBetaTab(2:end))), 'b+');
-legend('Birefringence estimated from Generated Matrices', 'True Birefringence of Fiber Segments');
-title('Birefringence Evolution through Segments for Generated Matrices');
-xlabel('Segment Index');
-ylabel('Birefringence (radians)');
-grid on;
-
-
-figure;
-for codeIdx = 50:min(50, p.rx.nbDetectedCodes)
-    %subplot(1, 1, codeIdx);
-    plot(1:p.rx.nbOvsReflectors-1, abs(p.pola.birefringenceJonesMatrices(1,:,codeIdx)), 'r--');
-    hold on;
-    plot(2*(abs(p.fibre.evolBetaTab(2:end))), 'b');
-    title(['Birefringence Evolution through Segments for Code ', num2str(codeIdx)]);
-    xlabel('Segment Index');
-    ylabel('Birefringence (radians)');
-    grid on;
-end
-
-% Display birefringence through the codes for the first five segments
-figure;
-for segIdx = 1:min(5, p.rx.nbOvsReflectors-1)
-    subplot(5, 1, segIdx);
-    plot(1:p.rx.nbDetectedCodes, squeeze(p.pola.birefringenceJonesMatrices(1,segIdx,:)));
-    title(['Birefringence through Codes for Segment ', num2str(segIdx)]);
-    xlabel('Code Index');
-    ylabel('Birefringence (radians)');
-    grid on;
-end
 
 
 
-for segIdx = p.pola.segIdx:min(p.pola.segIdx, p.rx.nbOvsReflectors-1)
-    figure;
-    plot(1:p.rx.nbDetectedCodes-1, squeeze(p.pola.birefringenceJonesMatrices(1,segIdx,1:end-1)));
-    title(['Birefringence through Codes for Segment ', num2str(segIdx)]);
-    xlabel('Code Index');
-    ylabel('Birefringence (radians)');
-    grid on;
-end
-
-for segIdx = p.pola.segIdx:min(p.pola.segIdx, p.rx.nbOvsReflectors-1)
-    figure;
-    plot(1:p.rx.nbDetectedCodes-1, squeeze(p.pola.birefringenceJonesMatricesGen(1,segIdx,1:end-1)));
-    title(['Birefringence through Codes for Segment ', num2str(segIdx)]);
-    xlabel('Code Index');
-    ylabel('Birefringence (radians)');
-    grid on;
-end
-% Display birefringence evolution through the segments for the first code (using birefringenceJonesMatrices2)
-%figure;
-%for codeIdx = 1:min(1, p.rx.nbDetectedCodes)
-%    subplot(1, 1, codeIdx);
-%    plot(1:p.rx.nbOvsReflectors-1, abs(p.pola.birefringenceJonesMatrices2(1,:,codeIdx)), 'g--');
-%    hold on;
-%    plot(2*abs(p.fibre.evolBetaTab(2:end)), 'b');
-%    title(['Birefringence Evolution (Method 2) through Segments for Code ', num2str(codeIdx)]);
-%    xlabel('Segment Index');
-%    ylabel('Birefringence (radians)');
-%    grid on;
-%end
-
-% Display birefringence through the codes for the first five segments (using birefringenceJonesMatrices2)
-% figure;
-% for segIdx = 1:min(5, p.rx.nbOvsReflectors-1)
-%     subplot(5, 1, segIdx);
-%     plot(1:p.rx.nbDetectedCodes, squeeze(p.pola.birefringenceJonesMatrices2(1,segIdx,:)));
-%     title(['Birefringence (Method 2) through Codes for Segment ', num2str(segIdx)]);
-%     xlabel('Code Index');
-%     ylabel('Birefringence (radians)');
-%     grid on;
-% end
-% 
-% % Display birefringence evolution through the segments for code number 100 (using birefringenceJonesMatrices2)
-% figure;
-% codeIdx = 100;
-% if codeIdx <= p.rx.nbDetectedCodes
-%     plot(1:p.rx.nbOvsReflectors-1, abs(p.pola.birefringenceJonesMatrices2(1,:,codeIdx)), 'g--');
-%     hold on;
-%     plot(2*abs(p.fibre.evolBetaTab(2:end)), 'b');
-%     title(['Birefringence Evolution (Method 2) through Segments for Code ', num2str(codeIdx)]);
-%     xlabel('Segment Index');
-%     ylabel('Birefringence (radians)');
-%     grid on;
-% else
-%     warning('Code index exceeds the number of detected codes.');
-% end
-
-% Plot the standard deviation of the birefringence across time
-%figure;
-%stdBirefringence = std(p.pola.birefringenceJonesMatrices(1, :, 1:end-1), 0, 3); % Compute std across time (3rd dimension)
-%plot(1:p.rx.nbOvsReflectors-1, stdBirefringence, 'b-o');
-%title('Standard Deviation of Birefringence Across Time');
-%xlabel('Segment Number');
-%ylabel('Standard Deviation of Birefringence (radians)');
-%grid on;
-
-% % Plot the standard deviation of the birefringence across time (method 2)
-% figure;
-% stdBirefringence2 = std(p.pola.birefringenceJonesMatrices2(1, :, 1:end-1), 0, 3); % Compute std across time (3rd dimension)
-% plot(1:p.rx.nbOvsReflectors-1, stdBirefringence2, 'b-o');
-% title('Standard Deviation of Birefringence Across Time (method 2)');
-% xlabel('Segment Number');
-% ylabel('Standard Deviation of Birefringence (radians)');
-% grid on;
-
+%%
 r.intJonesTabOvs =          intJonesTab; 
 p.rx.AvgIntensPerReflectorTabOvs = mean(intJonesTab,2); %Time averaged intensity per reflector  [1 x Nbsegt]
 p.rx.AvgAbsDetPerReflectorTabOvs = mean(abs(detJonesTab),2); %Time averaged abs(det) per reflector  [1 x Nbsegt]
@@ -418,16 +250,16 @@ if p.displ.testsimomimo == 0
     %disp(size(phiJonesTabSelect));
 else
     phiJonesTabSelect = 0.5*angle(detJonesTab);%Absolute phase is calculated & stored for all Jones matrices
-    
 end
 
+%% Calculation of the birefringence for the selected reflectors
+
+% Estimated matrices
 p.pola.detCurrent = zeros(1, p.rx.nbOvsSelectedReflectors-1, p.rx.nbDetectedCodes);
 productJonesMatrices = zeros(4, p.rx.nbOvsSelectedReflectors-1, p.rx.nbDetectedCodes);
-% Test of birefringence estimation for best reflectors
 JonesMatricesSelect = listJonesMatrices(:, p.displ.selectedIdxTab, :); % Extract the selected Jones matrices
 p.pola.JonesMatricesSelect = reshape(JonesMatricesSelect, 4, p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); % Reshape the selected Jones matrices
-p.pola.testJonesMatricesSelect = zeros(4, p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes);
-disp(size(p.pola.JonesMatricesSelect));
+
 for codeIdx = 1:p.rx.nbDetectedCodes
     % Loop through each segment
     for segIdx = 1:p.rx.nbOvsSelectedReflectors-1
@@ -442,11 +274,9 @@ for codeIdx = 1:p.rx.nbDetectedCodes
         % Normalize the matrices by the square root of their determinants
         currentJonesMatrix = currentJonesMatrix / sqrt(p.pola.detCurrent(:, segIdx, codeIdx));
         nextJonesMatrix = nextJonesMatrix / sqrt(detNext);
-        p.pola.testJonesMatricesSelect(:, segIdx, codeIdx) = reshape(currentJonesMatrix, 4, 1);
+
         % Calculate the product of the dagger of the current matrix and the next matrix
         productMatrix = currentJonesMatrix' * nextJonesMatrix;
-        
-        % Store the result
         productJonesMatrices(:, segIdx, codeIdx) = productMatrix(:);
     end
 end
@@ -472,122 +302,80 @@ for codeIdx = 1:p.rx.nbDetectedCodes
         p.pola.birefringenceJonesMatricesSelect(:, segIdx, codeIdx) = ...
             (1/2) * getAnglePlusMinusPiOver2(angle(eigenvalues(1))) - ...
             (1/2) * getAnglePlusMinusPiOver2(angle(eigenvalues(2)));
-
-            % Compute the birefringence
-        %p.pola.birefringenceJonesMatricesSelect(:, segIdx, codeIdx) = ...
-        %    (1/2) * getAnglePlusMinusPiOver2(angle(eigenvalues(1))) - ...
-        %    (1/2) * getAnglePlusMinusPiOver2(angle(eigenvalues(2)));
     end
 end
 
-% Calculate the briefringence evolution through the segments for the selected reflectors for the generated matrices
-p.pola.detCurrentGen = zeros(1, p.rx.nbOvsSelectedReflectors-1);
-productJonesMatricesGen = zeros(4, p.rx.nbOvsSelectedReflectors-1);
-% Test of birefringence estimation for generated matrices
-listJonesMatricesGen = reshape(p.HiGen, 4, p.fibre.nbSegments);
-% Extract the selected Jones matrices for generated matrices
-JonesMatricesGenSelect = listJonesMatricesGen(:, p.displ.selectedIdxTab); % Extract the selected Jones matrices
-p.pola.JonesMatricesGen = reshape(JonesMatricesGenSelect, 4, p.rx.nbOvsSelectedReflectors); % Reshape the selected Jones matrices
-p.pola.testJonesMatricesGenSelect = zeros(4, p.rx.nbOvsSelectedReflectors);
-for segIdx = 1:p.rx.nbOvsSelectedReflectors-1
-    % Extract the current and next Jones matrices
-    currentJonesMatrixGen = reshape(p.pola.JonesMatricesGen(:,segIdx), 2, 2);
-    nextJonesMatrixGen = reshape(p.pola.JonesMatricesGen(:,segIdx + 1), 2, 2);
-    
-    % Calculate the determinants
-    p.pola.detCurrentGen(:, segIdx) = det(currentJonesMatrixGen);
-    detNextGen = det(nextJonesMatrixGen);
-    
-    % Normalize the matrices by the square root of their determinants
-    currentJonesMatrixGen = currentJonesMatrixGen / sqrt(p.pola.detCurrentGen(:, segIdx));
-    nextJonesMatrixGen = nextJonesMatrixGen / sqrt(detNextGen);
-    p.pola.testJonesMatricesGen(:, segIdx) = reshape(currentJonesMatrixGen, 4, 1);
-    
-    % Calculate the product of the dagger of the current matrix and the next matrix
-    productMatrixGen = currentJonesMatrixGen' * nextJonesMatrixGen;
-    
-    % Store the result
-    productJonesMatricesGen(:, segIdx) = productMatrixGen(:);
-end
+% Generated matrices
+p.pola.detCurrentGen = zeros(1, p.rx.nbOvsSelectedReflectors-1, p.rx.nbDetectedCodes);
+productJonesMatricesGen = zeros(4, p.rx.nbOvsSelectedReflectors-1, p.rx.nbDetectedCodes);
 
+% Extract the selected Jones matrices for generated matrices
+JonesMatricesGenSelect = listJonesMatricesGen(:, p.displ.selectedIdxTab, :); % Extract the selected Jones matrices
+p.pola.JonesMatricesGen = reshape(JonesMatricesGenSelect, 4, p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); % Reshape the selected Jones matrices
+p.pola.testJonesMatricesGenSelect = zeros(4, p.rx.nbOvsSelectedReflectors);
+for codeIdx = 1:p.rx.nbDetectedCodes
+    for segIdx = 1:p.rx.nbOvsSelectedReflectors-1
+        % Extract the current and next Jones matrices
+        currentJonesMatrixGen = reshape(p.pola.JonesMatricesGen(:,segIdx, codeIdx), 2, 2);
+        nextJonesMatrixGen = reshape(p.pola.JonesMatricesGen(:,segIdx + 1, codeIdx), 2, 2);
+        
+        % Calculate the determinants
+        p.pola.detCurrentGen(:, segIdx, codeIdx) = det(currentJonesMatrixGen);
+        detNextGen = det(nextJonesMatrixGen);
+        
+        % Normalize the matrices by the square root of their determinants
+        currentJonesMatrixGen = currentJonesMatrixGen / sqrt(p.pola.detCurrentGen(:, segIdx, codeIdx));
+        nextJonesMatrixGen = nextJonesMatrixGen / sqrt(detNextGen);
+        p.pola.testJonesMatricesGen(:, segIdx) = reshape(currentJonesMatrixGen, 4, 1);
+        
+        % Calculate the product of the dagger of the current matrix and the next matrix
+        productMatrixGen = currentJonesMatrixGen' * nextJonesMatrixGen;
+        
+        % Store the result
+        productJonesMatricesGen(:, segIdx, codeIdx) = productMatrixGen(:);
+    end
+end
 % Initialize the eigenvalues matrix
-p.pola.eigenvaluesJonesMatricesGen = zeros(2, p.rx.nbOvsSelectedReflectors-1);
-p.pola.birefringenceJonesMatricesGenSelect = zeros(1, p.rx.nbOvsSelectedReflectors-1);
+p.pola.eigenvaluesJonesMatricesGen = zeros(2, p.rx.nbOvsSelectedReflectors-1, p.rx.nbDetectedCodes);
+p.pola.birefringenceJonesMatricesGenSelect = zeros(1, p.rx.nbOvsSelectedReflectors-1, p.rx.nbDetectedCodes);
 
 % Loop through each segment
+for codeIdx = 1:p.rx.nbDetectedCodes
+    for segIdx = 1:p.rx.nbOvsSelectedReflectors-1
+        % Extract the product Jones matrix
+        productMatrixGen = reshape(productJonesMatricesGen(:,segIdx, codeIdx), 2, 2);
+        
+        % Compute the eigenvalues
+        eigenvaluesGen = eig(productMatrixGen);
+        
+        % Store the eigenvalues
+        p.pola.eigenvaluesJonesMatricesGen(:, segIdx, codeIdx) = eigenvaluesGen;
+        
+        % Compute the birefringence
+        p.pola.birefringenceJonesMatricesGenSelect(:, segIdx, codeIdx) = ...
+            (1/2) * getAnglePlusMinusPiOver2(angle(eigenvaluesGen(1))) - ...
+            (1/2) * getAnglePlusMinusPiOver2(angle(eigenvaluesGen(2)));
+    end
+end
+
+%% standard deviation of birefringence estimation
+p.pola.stdBirefringenceSelect = std(abs(p.pola.birefringenceJonesMatricesSelect(1, :, 1:end)), 0, 3);
+
+
+%% Mean squared error of birefringence estimation on the selected reflectors
+sum_squared = zeros(1, p.rx.nbOvsSelectedReflectors-1);
+mse_persegment = zeros(1, p.rx.nbOvsSelectedReflectors-1);
+
 for segIdx = 1:p.rx.nbOvsSelectedReflectors-1
-    % Extract the product Jones matrix
-    productMatrixGen = reshape(productJonesMatricesGen(:,segIdx), 2, 2);
-    
-    % Compute the eigenvalues
-    eigenvaluesGen = eig(productMatrixGen);
-    
-    % Store the eigenvalues
-    p.pola.eigenvaluesJonesMatricesGen(:, segIdx) = eigenvaluesGen;
-    
-    % Compute the birefringence
-    p.pola.birefringenceJonesMatricesGenSelect(:, segIdx) = ...
-        (1/2) * getAnglePlusMinusPiOver2(angle(eigenvaluesGen(1))) - ...
-        (1/2) * getAnglePlusMinusPiOver2(angle(eigenvaluesGen(2)));
+    for codeIdx = 1:p.rx.nbDetectedCodes
+        % Compute the mean squared error between the estimated and generated birefringence variations around the mean
+        diff_gen = abs(p.pola.birefringenceJonesMatricesGenSelect(1, segIdx, codeIdx)) - mean(abs(p.pola.birefringenceJonesMatricesGenSelect(1, segIdx, :)));
+        diff_est = abs(p.pola.birefringenceJonesMatricesSelect(1, segIdx, codeIdx)) - mean(abs(p.pola.birefringenceJonesMatricesSelect(1, segIdx, :)));
+        sum_squared(segIdx) = sum_squared(segIdx) + abs((diff_gen - diff_est)).^2;
+    end
+    mse_persegment(segIdx) = sum_squared(segIdx)/p.rx.nbDetectedCodes; % Compute the mean squared error for each segment
 end
-
-
-%adapt p.evol.betaTab to the selected reflectors : need to sum the birefringence of the non selected reflectors in between consecutive selected reflectors
-p.fibre.evolBetaTabSelect = zeros(1, p.rx.nbOvsSelectedReflectors);
-% Compute the birefringence evolution between selected reflectors
-for segIdx = 2:p.rx.nbOvsSelectedReflectors
-    % Sum the birefringences of the non-selected segments between the selected reflectors
-    startIdx = p.displ.selectedIdxTab(segIdx - 1);
-    endIdx = p.displ.selectedIdxTab(segIdx);
-    p.fibre.evolBetaTabSelect(segIdx) = sum(p.fibre.evolBetaTab(startIdx+1:endIdx));
-end
-% Set the birefringence of the first selected reflector
-p.fibre.evolBetaTabSelect(1) = p.fibre.evolBetaTab(p.displ.selectedIdxTab(1));
-
-% Plot the birefringence evolution through the segments for the first code
-figure;
-for codeIdx = 154:min(154, p.rx.nbDetectedCodes)
-    plot(1:p.rx.nbOvsSelectedReflectors-1, abs(p.pola.birefringenceJonesMatricesSelect(1, :, codeIdx)), 'r--');
-    hold on;
-    plot(abs(getAnglePlusMinusPiOver2((((2*p.fibre.evolBetaTabSelect(2:end)))))), 'b+');
-    hold on;
-    plot(1:p.rx.nbOvsSelectedReflectors-1, abs(p.pola.birefringenceJonesMatricesGenSelect(1, :)), 'g');
-    title(['Absolute Birefringence Evolution through Segments for Code ', num2str(codeIdx)]);
-    legend('Estimated Matrices', 'sum of true birefringence','Generated Matrices');
-    xlabel('Segment Index');
-    ylabel('Birefringence (radians)');
-    grid on;
-end
-
-% figure;
-% for codeIdx = p.pola.codeIdx-1:min(p.pola.codeIdx-1, p.rx.nbDetectedCodes)
-%     plot(1:p.rx.nbOvsSelectedReflectors-1, abs(p.pola.birefringenceJonesMatricesSelect(1,:,codeIdx)), 'r--');
-%     hold on;
-%     plot(1:p.rx.nbOvsSelectedReflectors-1, abs(p.pola.birefringenceJonesMatricesGenSelect(1, :)), 'b');
-%     title(['Absolute Birefringence Evolution through Segments for Code ', num2str(codeIdx)]);
-%     legend('Estimated Matrices', 'Generated Matrices');
-%     xlabel('Segment Index');
-%     ylabel('Birefringence (radians)');
-%     grid on;
-% end
-
-
-%standard deviation on best reflectors
-figure;
-p.pola.stdBirefringenceSelect = std(p.pola.birefringenceJonesMatricesSelect(1, :, 21:end-1), 0, 3); % Compute std across time (3rd dimension), discarding the first 20 codes
-plot(1:p.rx.nbOvsSelectedReflectors-1, p.pola.stdBirefringenceSelect, 'b-o');
-title('Standard Deviation of Birefringence Across Time for selected reflectors only');
-xlabel('Segment Index');
-ylabel('Standard Deviation of Birefringence (radians)');
-grid on;
-
-figure;
-p.pola.stdBirefringenceGen = std(p.pola.birefringenceJonesMatricesGen(1, :, 21:end-1), 0, 3); % Compute std across time (3rd dimension), discarding the first 20 codes
-plot(1:p.rx.nbOvsReflectors-1, p.pola.stdBirefringenceGen, 'b-o');
-title('Standard Deviation of Birefringence Across Time for selected reflectors only');
-xlabel('Segment Index');
-ylabel('Standard Deviation of Birefringence (radians)');
-grid on;
+p.pola.mseSeg = mse_persegment; % Store the mean squared error for each segment
 
 
 %% Save softBit table(s)
@@ -740,33 +528,6 @@ if p.displ.polar
     p = getMuellerParam(p,reshape(selectedMatrices ,2,2,[]));
     clear downSampHi downSampHSum
 end
-
-
-
-
-%p = getMuellerParam(p,reshape(p.HiTab ,2,2,[]));
-% Add this code at the end of your getMuellerParam function
-
-% Plotting the standard deviation of differential polarization parameters
-%figure;
-%subplot(3,1,1);
-% plot(p.pola.stddiffPolaS1);
-% title('Standard Deviation of Differential Polarization S1');
-% xlabel('Reflector Index');
-% ylabel('Standard Deviation');
-% 
-% subplot(3,1,2);
-% plot(p.pola.stddiffPolaS2);
-% title('Standard Deviation of Differential Polarization S2');
-% xlabel('Reflector Index');
-% ylabel('Standard Deviation');
-% 
-% subplot(3,1,3);
-% plot(p.pola.stddiffPolaS3);
-% title('Standard Deviation of Differential Polarization S3');
-% xlabel('Reflector Index');
-% ylabel('Standard Deviation');
-
 
 
 %% Display averaged intensity & differential phase vs time of selected backscatters (coarse resolution)

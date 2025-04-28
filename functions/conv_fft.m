@@ -10,7 +10,7 @@ function Erx = conv_fft(Erx, h11,h12,h21,h22)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
+%disp(size(Erx));
 Erx = double(Erx);
 %disp(size(Erx));
 %disp(size(h11));

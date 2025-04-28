@@ -26,7 +26,7 @@ elseif brutBlockLen<5*length(p.tx.gCode) %Check brutBlockLen>>hLen %FIXME
 %     fprintf('\nBlock length set to %d = nbCodes*%d \n', brutBlockLen, length(gCode));
 %     %return;
 end
-
+%Etx = repmat(gCodeSingle, 1, p.tx.nbCodes);
 p = fcorrAndGetJones(p.tx.gCode, brutBlockLen,p); %Processing per block
 fprintf('\nCode correlation AND Jones Matrix extraction processes completed within %.1f seconds. %d blocks of %d samples (>%d samples per code)\n', toc, floor(length(Erx)/(brutBlockLen-length(Erx)+1)), brutBlockLen-length(Erx)+1, length(Erx));
 

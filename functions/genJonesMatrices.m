@@ -25,7 +25,7 @@ else
     rng(p.seeds.seed_rotPol); % polarization correlation length not exceeded, Wiener process
     p.fibre.evolThetaTab = [single(asin(sqrt(rand()))); single(asin(sqrt(rand(p.fibre.nbSegments,1)))*resolution)];
     rng(p.seeds.seed_beta);
-    p.fibre.evolBetaTab =  single(pi*resolution*(1+rand(p.fibre.nbSegments, 1)*0.1));%single(rand()*2*pi-pi) % single((rand(p.fibre.nbSegments,1)*2*pi-pi) %single(rand(p.fibre.nbSegments,1)*2*pi-pi)*0.00001 %[single(rand()*2*pi-pi); single((rand(p.fibre.nbSegments-1,1)*2*pi-pi)*resolution)];
+    p.fibre.evolBetaTab =  single(pi*resolution*(1+rand(p.fibre.nbSegments, 1)*0.0001));%single(rand()*2*pi-pi) % single((rand(p.fibre.nbSegments,1)*2*pi-pi) %single(rand(p.fibre.nbSegments,1)*2*pi-pi)*0.00001 %[single(rand()*2*pi-pi); single((rand(p.fibre.nbSegments-1,1)*2*pi-pi)*resolution)];
     rng(p.seeds.seed_gamma);
     p.fibre.evolGammaTab = [single(rand()*2*pi-pi); single((rand(p.fibre.nbSegments-1,1)*2*pi-pi)*resolution)];
     p.fibre.rotPolarTab = cumsum(p.fibre.evolThetaTab);
@@ -46,7 +46,7 @@ M_i = [sqrt(1-p.fibre.AlphaPolRay), -sqrt(p.fibre.AlphaPolRay); sqrt(p.fibre.Alp
 U_i = single(NaN(2,2*p.fibre.nbSegments)); %Output array storing the 2*2 Jones matrix of each segment
 for n=1:p.fibre.nbSegments 
     expjBeta = exp(1j*(p.fibre.evolBetaTab(n))); 
-    sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n)); %sinRot = sin(20); cosRot = cos(20);%
+    sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n)); %sinRot = sin(20); cosRot = cos(20);%
     U_i(:,1+2*(n-1):2*n) = [cosRot sinRot ; -sinRot cosRot] * [expjBeta 0 ; 0 conj(expjBeta)]*[cosRot -sinRot ; sinRot cosRot];%Calculate matrix U_forw for the current fiber segment
 end
 
@@ -62,7 +62,7 @@ end
 p.fibre.Hi = single(NaN(2,2*p.fibre.nbSegments)); %Output array storing the 2*2 Jones matrix of each segment
 if p.fibre.polar
     for n=1:p.fibre.nbSegments        
-        p.fibre.Hi(:,1+2*(n-1):2*n) = p.fibre.Ai(n)*p.fibre.Hi_forward(:,1+2*(n-1):2*n).'* p.fibre.Hi_forward(:,1+2*(n-1):2*n); %p.fibre.Ei(n)*p.fibre.Ai(n)*%Calculate round-trip matrix for the current fiber segment
+        p.fibre.Hi(:,1+2*(n-1):2*n) = p.fibre.Ei(n)*p.fibre.Ai(n)*p.fibre.Hi_forward(:,1+2*(n-1):2*n).'* p.fibre.Hi_forward(:,1+2*(n-1):2*n); %p.fibre.Ei(n)*p.fibre.Ai(n)*%Calculate round-trip matrix for the current fiber segment
     end
 else
     for n=1:p.fibre.nbSegments
