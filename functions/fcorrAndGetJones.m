@@ -17,7 +17,7 @@ global Erx;
 p.rx.ErxLen = brutBlockLen; 
 Erx = Erx(1:brutBlockLen,:); 
 
-hLen  = length(gCode)*p.rx.ovsFactor/p.tx.ovsFactor;
+hLen  = length(gCode)/p.tx.ovsFactor;
 
 % Process 1st block apart to include time synchro (Rayleigh start & stop positions) prior to Jones matrix extraction
 offsetInStart = 1; blockIdx = 1;
