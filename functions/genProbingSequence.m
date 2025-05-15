@@ -48,8 +48,12 @@ end
 gCode = ([reshape(repmat(gCode(1, :), p.rx.ovsFactor, 1), 1, []); reshape(repmat(gCode(2, :), p.rx.ovsFactor, 1), 1, [])]); 
 
 % Display probing sequence and fiber details
-fprintf('\n*** Rx PROC. INPUTS  Probing:%s  fSymb:%.0fMHz  Ncode:%d symbols (sb%d)  Tcode:%.2fus  BW:%.2fkHz  MaxProbingDist:%.3fkm  EnteredFiberLength:%.1fkm  Signal duration:%.4fs ***\n', ...
-    p.tx.ProbingMethod, p.tx.fSymb * 1.e-6, p.tx.Ncode, p.tx.seqOrderCst, p.tx.Tcode * 1.e6, 0.5e-3 / p.tx.Tcode, 1.e-3 * maxLengthFactor * (0.5 * p.tx.Tcode * p.fibre.cFiber), 1.e-3 * p.fibre.L, 8 * 2^(p.tx.seqOrderCst) * p.tx.nbCodes / (p.rx.ovsFactor * p.tx.fSymb));
+
+% fprintf('\n*** Rx PROC. INPUTS  Probing:%s  fSymb:%.0fMHz  Ncode:%d symbols (sb%d)  Tcode:%.2fus  BW:%.2fkHz  MaxProbingDist:%.3fkm  EnteredFiberLength:%.1fkm  Signal duration:%.4fs ***\n', ...
+%     p.tx.ProbingMethod, p.tx.fSymb * 1.e-6, p.tx.Ncode, p.tx.seqOrderCst, p.tx.Tcode * 1.e6, 0.5e-3 / p.tx.Tcode, 1.e-3 * maxLengthFactor * (0.5 * p.tx.Tcode * p.fibre.cFiber), 1.e-3 * p.fibre.L, 8 * 2^(p.tx.seqOrderCst) * p.tx.nbCodes / (p.rx.ovsFactor * p.tx.fSymb));
+fprintf('\n*** Rx PROC. INPUTS  Probing:%s  fSymb:%.0fMHz  Ncode:%d symbols (sb%d)  Tcode:%.2fus  BW:%.2fkHz  MaxProbingDist:%.3fkm  EnteredFiberLength:%.1fkm ***\n', ...
+    p.tx.ProbingMethod, p.tx.fSymb * 1.e-6, p.tx.Ncode, p.tx.seqOrderCst, p.tx.Tcode * 1.e6, 0.5e-3 / p.tx.Tcode, 1.e-3 * maxLengthFactor * (0.5 * p.tx.Tcode * p.fibre.cFiber), 1.e-3 * p.fibre.L);
+
 
 % Warning: Check if probing sequence length is compatible with fiber length
 if p.tx.Tcode < (1 / maxLengthFactor) * 2 * p.fibre.L / p.fibre.cFiber || p.tx.Tcode > 1 / (pi * p.tx.dfLaser)
