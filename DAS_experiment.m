@@ -1,15 +1,12 @@
-%% DAS Simulation
+%% DAS Experiments
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Simulation of a continuous-wave DAS system + Model for Rayleigh backscattering in a fiber
-% - Interrogation modes:  Golay, CAZAC or sweeps
+% Processing of lab acquisitions
 % - Detection modes: SISO, SIMO, MISO and MIMO.
-% - Frequency diversity possibility through OFDM
-% - Tested only for p.rx.oversampling = 1
 %
 % Authors:
 % Original code by S. Guerrier, C. Dorize & E. Awwad - 2022
-% Modified version by A. Sahu - 2024 adrish.sahu@ip-paris.fr
+% Modified version by A. Sahu, D. Prato, E. Awwad - 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Initialization
