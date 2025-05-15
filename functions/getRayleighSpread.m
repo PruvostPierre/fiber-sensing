@@ -15,7 +15,7 @@ if strcmpi(p.env,'exp')
     resDetShift = circshift(resDet, ovsCodeLength/2- PeakX);%A copy of resDet but shifted to get the peak in the middle of the buffer (X=ovsCodeLength/2)
     
     %Check if peak is fiber start, end, or a random location along the fiber
-    intensWinLen = 10;
+    intensWinLen = 100;
     sumIntensPrior = sum(resDetShift(ovsCodeLength/2-intensWinLen-1:ovsCodeLength/2-1));
     sumIntensAfter = sum(resDetShift(ovsCodeLength/2+1:ovsCodeLength/2+intensWinLen+1));
     ratioIntens = sumIntensPrior/sumIntensAfter;%>>1: peak is fiber end; <<1: peak is fiber start; close to 1: peak along the fiber, but location undetermined (probably  a high reflexion due to a bad connection)...
@@ -25,7 +25,7 @@ if strcmpi(p.env,'exp')
     [~,xminAfter] = min(resDetShift(ovsCodeLength/2+1:round(3/4*ovsCodeLength))); xminAfter = xminAfter + ovsCodeLength/2;
     
     %Get a low-resolution (averaged) version of resDetShift
-    lowResFact = 8;
+    lowResFact = 16;
     tmpTabLowRes = resDetShift(xminPrior:xminAfter);
     tmpTabLowRes = mean(reshape(tmpTabLowRes(1:lowResFact*floor(length(tmpTabLowRes)/lowResFact)),[lowResFact,floor(length(tmpTabLowRes)/lowResFact)]));
     
