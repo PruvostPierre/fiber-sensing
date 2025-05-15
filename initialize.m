@@ -28,8 +28,7 @@ p.rx.Xpol =  1;             % if SISO or MISO, is Xpol used at RX?
 p.ng =     p.Kg*p.N;        % Group velocity refractive index of the fibre
 p.f_0 =    p.C/p.tx.Lambda; % central frequency of laser source [Hz]
 p.fibre.LossdB =   -0.2;    % fibre loss coefficient [dB/km]
-p.fibre.polCorrL =    1;   % Polarization beat length between 0.05 and 100m. Common value for SSMF is 20cm. [m]
-
+p.fibre.polCorrL =    1;   % Polarization correlation length between 0.05 and 100m. Common value for SSMF is 20cm. [m]
 p.fibre.cFiber =  p.C/p.ng; % light velocity in the fibre [m/s]
 p.fibre.spatialRes =     p.fibre.cFiber/(2*p.tx.fSymb*p.tx.ovsFactor); % spatial resolution induced by symbol rate [m]
                          %(factor 2: backscatter roundtrip in each fiber segment)
@@ -92,7 +91,7 @@ p.rx.OFDMreconstruction =                 1;  %if OFDM trace, choose combination
 
 % TX impairments
 p.tx.lasernoise_on = true; % include or not laser phase noise
-p.tx.dfLaser =  0;      % laser linewidth (full width at half maximum) [Hz]
+p.tx.dfLaser =  100;      % laser linewidth (full width at half maximum) [Hz]
 p.tx.LaserLevel =  11;  % intensity level of the laser source [dBm]
 p.tx.RinLevel =   -140; % Level of laser Rin (for Rx SNR calc.) [dBm]
 p.tx.couplerFactor = 0.7;%coupling ratio between Signal and local oscillator 
@@ -127,7 +126,8 @@ p.rx.dfLaser = p.tx.dfLaser; %laser linewidth (full width at half maximum), self
 
 % DSP parameters
 p.rx.apply_total_normalization =  true;
-p.rx.ovsFactor = 2; %No oversampling in model; 2; %usual value at RX;
+p.rx.fSamp = 200e6; % [Hz]
+p.rx.ovsFactor = p.rx.fSamp./p.tx.fSymb; %No oversampling in model; 2; %usual value at RX;
 p.rx.resamplingFilter = true;
 
 %Correlation parameters
@@ -157,7 +157,6 @@ p.displ.lowResolFactor =  10;%Coarse spatial resolution factor used during initi
                              % backscarrering
 p.rx.averagingLowres = 0; %0 is low res by decimation, 1 is lowres by averaging
 
-p.displ.testsimomimo  =                   0; % for phase computation for only the selected matrices (0) or all estimated matrices (1)
 p.displ.getSVD =                          0; % Singular value decomposition of estimated matrices
 
 p.displ.edgeRatio =                       0.1; % for differential phase filtering with raised cosine window
@@ -175,7 +174,7 @@ p.displ.scaled_map =                      0; % adapt time/distance phase display
 
 %% Display options 
 p.displ.fIdx =   10;% Random figure index
-p.displ.powerIndication =  1; % prints input and output power for each block in command window
+p.displ.powerIndication =  0; % prints input and output power for each block in command window
 p.displ.detection =  1; % in getRayleighSpread, display detection of fiber start and fiber end
 
 p.displ.sphere =                    0; %display poincare sphere
@@ -206,7 +205,7 @@ p.displ.tabAudio =                  [30];%round(2000/p.displ.lowResolFactor/(p.r
 p.displ.psd_audio =                 0; %display psd at points where perturbation is applied
 
 p.displ.reliability =           0;  %Display reliability indicators of phase traces
-p.displ.reliability_dist =      1;  %Display reliability indicators of phase traces
+p.displ.reliability_dist =      0;  %Display reliability indicators of phase traces
 p.displ.softvalues =            0;  %Display soft bit values for selected segments
 
 p.displ.relDistr   =            0; %distribution (proba and occurences)
