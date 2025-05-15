@@ -31,45 +31,45 @@ plot(dist_axis(2:end-1), p.stdDiffPhiTabSelect(2:end-1),'.-'); hold on;
 ylabel('Diff Phase Std (rad)'); xlabel('Distance (km)'); grid on;
 
 %% Jones matrices plot
-SINGLE_JonesMatTab = repmat([p.HiGen, [0;0;0;0]], 1, p.rx.nbDetectedCodes);%p.HiTab(:,1:p.rx.nbDetectedCodes*p.rx.nbOvsReflectors); %
-h11err = p.HiTab(1,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(1,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
-h11_relerr = reshape(abs(h11err)./abs(SINGLE_JonesMatTab(1,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
+% SINGLE_JonesMatTab = repmat([p.HiGen, [0;0;0;0]], 1, p.rx.nbDetectedCodes);%p.HiTab(:,1:p.rx.nbDetectedCodes*p.rx.nbOvsReflectors); %
+% h11err = p.HiTab(1,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(1,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
+% h11_relerr = reshape(abs(h11err)./abs(SINGLE_JonesMatTab(1,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
+% 
+% h12err = p.HiTab(2,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(2,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
+% h12_relerr = reshape(abs(h12err)./abs(SINGLE_JonesMatTab(2,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
+% 
+% h21err = p.HiTab(3,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(3,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
+% h21_relerr = reshape(abs(h21err)./abs(SINGLE_JonesMatTab(3,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
+% 
+% h22err = p.HiTab(4,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(4,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
+% h22_relerr = reshape(abs(h22err)./abs(SINGLE_JonesMatTab(4,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
+% 
+% p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx); %hold off;
+% plot(abs(h11err), '*'); hold on;
+% plot(abs(h12err), 'o'); hold on;
+% plot(abs(h21err), 'x'); hold on;
+% plot(abs(h22err), '<'); hold on;
+% legend('h11','h12','h21','h22');
+% ylabel('Absolute error on |Jones mat terms|'); xlabel('Time index'); grid on;
 
-h12err = p.HiTab(2,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(2,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
-h12_relerr = reshape(abs(h12err)./abs(SINGLE_JonesMatTab(2,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
 
-h21err = p.HiTab(3,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(3,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
-h21_relerr = reshape(abs(h21err)./abs(SINGLE_JonesMatTab(3,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
-
-h22err = p.HiTab(4,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors) - SINGLE_JonesMatTab(4,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors); %absolute error
-h22_relerr = reshape(abs(h22err)./abs(SINGLE_JonesMatTab(4,1:p.rx.nbDetectedCodes*p.rx.nbOvsSelectedReflectors)), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes); %relative err
-
-p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx); %hold off;
-plot(abs(h11err), '*'); hold on;
-plot(abs(h12err), 'o'); hold on;
-plot(abs(h21err), 'x'); hold on;
-plot(abs(h22err), '<'); hold on;
-legend('h11','h12','h21','h22');
-ylabel('Absolute error on |Jones mat terms|'); xlabel('Time index'); grid on;
-
-
-p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx); %hold off;
-plot(dist_axis, reshape(abs(h11err),p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), '*'); hold on;
-plot(dist_axis, reshape(abs(h12err), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), 'o'); hold on;
-plot(dist_axis, reshape(abs(h21err), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), 'x'); hold on;
-plot(dist_axis, reshape(abs(h22err), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), '<'); hold on;
-legend('h11','h12','h21','h22');
-ylabel('Absolute error on |Jones mat terms|'); xlabel('Distance (km)'); grid on;
-
-p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx); %hold off;
-plot(dist_axis_all(1:end-1), h11_relerr(1:end-1,2:end), '*'); hold on;
-plot(dist_axis_all(1:end-1), h12_relerr(1:end-1,2:end), 'o'); hold on;
-plot(dist_axis_all(1:end-1), h21_relerr(1:end-1,2:end), 'x'); hold on;
-plot(dist_axis_all(1:end-1), h22_relerr(1:end-1,2:end), '<'); hold on;
-ylabel('Relative error on Jones mat terms'); yyaxis right;
-plot(dist_axis_all(1:end-1),p.stdDiffPhiTabSelect(1:end-1));
-legend('h11','h12','h21','h22');
-ylabel('\sigma \phi (rad)'); xlabel('Distance (km)'); grid on;
+% p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx); %hold off;
+% plot(dist_axis, reshape(abs(h11err),p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), '*'); hold on;
+% plot(dist_axis, reshape(abs(h12err), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), 'o'); hold on;
+% plot(dist_axis, reshape(abs(h21err), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), 'x'); hold on;
+% plot(dist_axis, reshape(abs(h22err), p.rx.nbOvsSelectedReflectors, p.rx.nbDetectedCodes), '<'); hold on;
+% legend('h11','h12','h21','h22');
+% ylabel('Absolute error on |Jones mat terms|'); xlabel('Distance (km)'); grid on;
+% 
+% p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx); %hold off;
+% plot(dist_axis_all(1:end-1), h11_relerr(1:end-1,2:end), '*'); hold on;
+% plot(dist_axis_all(1:end-1), h12_relerr(1:end-1,2:end), 'o'); hold on;
+% plot(dist_axis_all(1:end-1), h21_relerr(1:end-1,2:end), 'x'); hold on;
+% plot(dist_axis_all(1:end-1), h22_relerr(1:end-1,2:end), '<'); hold on;
+% ylabel('Relative error on Jones mat terms'); yyaxis right;
+% plot(dist_axis_all(1:end-1),p.stdDiffPhiTabSelect(1:end-1));
+% legend('h11','h12','h21','h22');
+% ylabel('\sigma \phi (rad)'); xlabel('Distance (km)'); grid on;
 
 if p.rx.ovsFactor == 1 || (p.rx.decimation == 0)
     p.rx.nbReflectors = p.rx.nbOvsReflectors;
@@ -131,7 +131,7 @@ end %stdvtostrain
 %% Display intensity per reflector
 if p.displ.IntensityPerReflector
     p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx);hold off;
-    plot(dist_axis(2:end-1),p.rx.AvgAbsDetPerReflectorTab(p.displ.selectedIdxTab(2:end-1)),'b.-');hold on;
+    %plot(dist_axis(2:end-1),p.rx.AvgAbsDetPerReflectorTab(p.displ.selectedIdxTab(2:end-1)),'b.-');hold on;
     plot(dist_axis(2:end-1),p.stdDiffPhiTabSelect(2:end-1),'g.-');hold on;
     xlabel('Distance (km)'); ylabel('Avg (in time) intensity per reflector');
     axis([0 dist_axis(end) 0 1]); grid on;
