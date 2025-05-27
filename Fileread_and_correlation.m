@@ -5,8 +5,7 @@ function [p,r]=Fileread_and_correlation(p,r)
 % process and the Jones matrices extraction at the RX side.
 %
 % Authors: 
-% Original code by S. Guerrier, C. Dorize & E. Awwad - 2022
-% Modified version by A. Sahu - 2024 adrish.sahu@ip-paris.fr
+% Original code by E. Awwad, P. Pruvost, D. Prato - 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 global Erx; % global variable containing the propagated field
@@ -17,15 +16,34 @@ tCumul = 0;   % Initialize cumulative time counter
 
 
 %% Reading acquired files
-for i = 1:4
-A(:,i) = readmatrix([p.rx.data_directory,p.rx.data_filename,'_CH',num2str(i),'.txt'],'NumHeaderLines',12);
+if (p.rx.data_filename(end-2:end)=='dat') 
+    % GageStream2Disk saves all channels in one file in a time division
+    % multiplexed way, for instance if we call the four channels
+    % a1,a2,a3,a4, the samples in the single-column file are a1(0), a2(0),
+    % a3(0),a4(0),a1(1), a2(1),a3(1),a4(1),etc.
+    fileID = fopen([p.rx.data_directory,p.rx.data_filename]);
+    B = fread(fileID,p.rx.samples,'int16');
+
+    % rescaling all channels to values in Volts
+    B = B.*p.rx.acq_card_range./2^16;
+
+    A(:,1)=B(1:4:end);
+    A(:,2)=B(2:4:end);
+    A(:,3)=B(3:4:end);
+    A(:,4)=B(4:4:end);
+    fclose(fileID);
+    clear B;
+else
+  for i = 1:4
+        A(:,i) = readmatrix([p.rx.data_directory,p.rx.data_filename,'_CH',num2str(i),'.txt'],'NumHeaderLines',12);
+  end
 end
-   
-Erx(1,:)= A(:,2)+1i*A(:,1); % Associate channels to PolX I and Q
-Erx(2,:)= A(:,4)+1i*A(:,3); % Associate channels to PolY I and Q
+Erx(1,:)= A(:,1)+1i*A(:,2); % Associate channels to PolX I and Q
+Erx(2,:)= A(:,3)+1i*A(:,4); % Associate channels to PolY I and Q
+clear A;
 
 % Estimated number of acquired codes
-p.tx.nbCodes = round(length(Erx)/p.rx.fSamp./(length(p.tx.gCode)/p.tx.fSymb));
+p.tx.nbCodes = round(length(Erx)./length(p.rx.gCode));
 
     % Blocking DC component (to emulate DC block of each of the 4 balanced PD outputs)
     if p.rx.RxDcBlocker~=0
@@ -39,8 +57,6 @@ p.tx.nbCodes = round(length(Erx)/p.rx.fSamp./(length(p.tx.gCode)/p.tx.fSymb));
     end
     
 fprintf(' \n * time to go through Rx model %.2f seconds \n',toc(rx_start)); tCumul = tCumul + toc(rx_start);
-p.rx.ErxLen = size(Erx,1);
-
 
 corr_start = tic;
 
