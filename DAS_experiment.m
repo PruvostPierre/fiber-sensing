@@ -1,12 +1,10 @@
-%% DAS Experiments
+%% DAS Experiment - Long-time acquisitions
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Processing of lab acquisitions
-% - Detection modes: SISO, SIMO, MISO and MIMO.
-%
+% Processing of experimental measurements for a coded DAS system
+% Loading acquisitions from large .DAT files
 % Authors:
-% Original code by S. Guerrier, C. Dorize & E. Awwad - 2022
-% Modified version by A. Sahu, D. Prato, E. Awwad - 2025
+% Original code by E. Awwad, D. Prato, P. Pruvost - 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Initialization
@@ -18,14 +16,14 @@ close all;
 clc;
 
 % Subfunction Path addition
-addpath('E:\03-Code\functions'); %CHANGEME
-addpath('E:\03-Code');
+addpath('D:\Codes\Research\Sensing\DAS\functions'); %CHANGEME
+addpath('D:\Codes\Research\Sensing\DAS'); % CHANGE ME 
 
 % Initialize environment and simulation parameters
 p.env = 'exp';              % 'model' for simulation, 'exp' for experimental data
 p.tx.fSymb = 100e6;          % Symbol rate [Baud]
 p.tx.ovsFactor = 1;
-p.fibre.L = 5200; % fiber length in meters [m] 
+p.fibre.L = 1000; % fiber length in meters [m] 
 p = initialize(p);          % Initialize default parameters
 
 %% Override default parameters
@@ -40,9 +38,11 @@ p.tx.ProbingMethod = 'Golay';      % Probing sequence type
 p.tx.seqOrderCst = 12;             % Sequence order for Golay codes
 
 % Stored data files
-p.rx.data_directory = 'E:\02-DATA\01-Test\';
-p.rx.data_filename = 'Acquire5';
-
+p.rx.data_directory = 'D:\Codes\Research\Sensing\DAS\Data\01-Test\'; % CHANGE ME 
+p.rx.data_filename = 'Datatest2_2_1.dat';  % filename without '_CH1.txt' for short acquisitions done with MATLAB, 
+% with '.dat' for long acquisitions done with GageStream2Disk.exe
+p.rx.samples = 200e6; % number of acquired samples
+p.rx.acq_card_range = 2; % in V
 % Display parameters
 p.displ.fIdx = 10;                 % Figure index for display
 p.displ.powerIndication = 1;       % Display power information (1: enabled)
@@ -58,8 +58,7 @@ r.nbRemovedLastSegments = 1;      % Segments removed from analysis (default: 1)
 
 %% Golay Code 
     [gCode, p] = genProbingSequence(p);
-    %gCode(2, :) = gCode(1, :);
-    p.tx.gCode = gCode;
+    p.rx.gCode = gCode; % sampled at p.rx.ovsFactor*p.tx.fSymb
 
 %% Main Processing for Acquired Sequence
     % Correlation and Jones matrix estimation
