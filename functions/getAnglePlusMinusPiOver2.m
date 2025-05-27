@@ -10,7 +10,7 @@ function out = getAnglePlusMinusPiOver2( Phi )
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-out = sign(Phi).*mod(abs(Phi),pi);%Constraint Phi elts between -pi/2 and +pi/2
+out = sign(Phi).*mod(abs(Phi),pi);%Constrain Phi elts between -pi/2 and +pi/2
 out = (out>pi/2)*(-pi) + out;
 out = (out<-pi/2)*(pi) + out;
 
