@@ -131,9 +131,10 @@ p.rx.ovsFactor = p.rx.fSamp./p.tx.fSymb; %No oversampling in model; 2; %usual va
 p.rx.resamplingFilter = true;
 
 %Correlation parameters
-p.rx.offset_ratio = 1.9; % ratio with respect to one code for initial offset after correlation
-p.rx.corrPerBlockTwin = ceil(2*(2^20)/p.tx.fSymb);%50.e-3;% block time window to be defined if correlation is processed per block (s)
-p.rx.corrPerBlockGpuFlag =  0; %if 1, the correlation process per block is computed through GPU
+p.rx.offset_ratio = 1; % ratio with respect to one code length for initial offset applied to correlation and synchronisation. 
+% Default value: 1 to avoid time aliasing after correlation that is implemented using fft/ifft
+p.rx.corrPerBlockTwin = 0.2; %ceil(2*(2^20)/p.tx.fSymb);%50.e-3;% block time window to be defined if correlation is processed per block (s)
+p.rx.corrPerBlockGpuFlag =  0; %if 1, the correlation process per block is computed through GPU % Not tested
 
 %% Post-processing parameters
 
@@ -195,7 +196,8 @@ p.displ.StDv =                      0; % Display optical phase standard deviatio
 p.displ.StDvtoStrain =              1;
 p.displ.IntensityPerReflector =     1; %Display backscattered intensity per reflector
 p.displ.PhiIntensity =              0; %Display Phi as fct of intensity
-p.displ.intensityDistance =         1;  p.displ.intensityDistdB = 0; %Display average RBS intensity as fct of fiber distance
+p.displ.intensityDistance =         0;  
+p.displ.intensityDistdB = 0; %Display average RBS intensity as fct of fiber distance
 
 p.displ.dispLasernoiseMat =         0; %display psd of laser noise matrix
 
