@@ -141,7 +141,7 @@ if p.displ.IntensityPerReflector
 end
 
 %% Display average RBS intensity as fct of fiber distance
-if p.displ.intensityDistance
+if p.displ.intensityDistance %FIXME not tested
     if p.displ.intensityDistdB
         p.displ.fIdx=p.displ.fIdx+1; figure(p.displ.fIdx);hold off;
         plot(dist_axis_all,10*log10(p.rx.AvgIntensPerReflectorTab./max(p.rx.AvgIntensPerReflectorTab)), '-');
