@@ -1,69 +1,67 @@
-function [gCode,p] = genProbingSequence(p)
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%'genProbingSequence' generates probing code (coding of two mutually 
-% orthogonal pairs of complementary mates) or sweep probing codes/sweep generation 
-%
-% FIXME For OFDM case, the symbol rate fSymb and the nb of taps Ncode in each
-% subcarrier are divided by 2^n with (n>0) in order to come up, 
-% after OFDM modulation, with a data flow at the % same rate as the single 
-% carrier reference case. Therefore, in the multicarrier case, fSymb 
-% stands for the symbol rate of the OFDM flow.
+function out = fctCorrBlock(Y, gCode_fft, codeLen,offset_ratio)
+%CHANGED
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Correlation process
+% Computes per block the 4 cross-correlations between Y(1,:), Y(2,:) and gCode_fft(1,:), gCode_fft(2,:) 
+% The input block length is already a power of 2. 
+% The input block Y is a time-domain signal
+% gCode_fft is the precalculated spectrum of the code, same size as the input block. 
 %
 % Authors: 
 % Original code by S. Guerrier, C. Dorize & E. Awwad - 2022
-% Modified version by E. Awwad - 2024 elie.awwad@telecom-paris.fr
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Modified version by A. Sahu - 2024 adrish.sahu@ip-paris.fr
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% Use the convolution theorem to implement correlation in Fourier domain
+% TF ( x(t) * y'(-t)) = TF(x).TF(y)' where (.)' stands for complex
+% conjugate and * stands for convolution operator
 
-% Select probing method based on user input
-switch (lower(p.tx.ProbingMethod))
-    
-    % Golay Code: Generates two mutually orthogonal pairs of complementary codes
-    case 'golay'
-        [gCode, p] = genGolayCode(p); % Probing codes generation using Golay code method
-        
-        maxLengthFactor = (1/4); % Golay codes are more compact, so maximum length factor is 1/4
-        
-    % Cazac Code: Uses two translated PSK sequences for probing
-    case 'cazac'
-        % Calculate the probing sequence length and the time duration for one sequence
-        p.tx.Ncode = 8 * 2^p.tx.seqOrderCst; % Sequence probing length based on sequence order
-        p.tx.Tcode = p.tx.Ncode / p.tx.fSymb; % Time duration for one sequence (in seconds)
-        
-        % Generate the Cazac code for probing, with complex exponential components
-        gCode(1, :) = exp(1i * 2 * pi / sqrt(p.tx.Ncode) .* (mod((1:p.tx.Ncode) - 1, sqrt(p.tx.Ncode)) + 1) .* (floor(((1:p.tx.Ncode) - 1) / sqrt(p.tx.Ncode)) + 1)) * exp(1i * pi / 4);
-        gCode(2, :) = circshift(gCode(1, :).', p.tx.Ncode / 2).'; % Shift the second sequence by half the length
-        
-        maxLengthFactor = (1/2); % Cazac codes are less compact, so maximum length factor is 1/2
-    
-	case 'sweep' %Not tested
-		[gCode,p]  = genSweep(p);
-		gCode(1,:) = (sqrt(length(gCode(1,:))/norm(gCode(1,:))^2))*gCode(1,:);%To have the same norm as with codes
-		gCode(2,:) = (sqrt(length(gCode(2,:))/norm(gCode(2,:))^2))*gCode(2,:);%To have the same norm as with codes
-		
-		maxLengthFactor= (1/2);
-        
-    % Default case: If an unknown probing method is provided, an error is raised
-    otherwise
-        error('ERROR: Unknown probing method.')
-        
+X1=conj(fft(Y(:,1))); % conjugate of Fast Fourier transform for x(1,:)
+X2=conj(fft(Y(:,2))); % conjugate of Fast Fourier transform for x(2,:)
+
+% ifft of spectral products 
+y11=ifft(X1.*gCode_fft(:,1)); 
+y21=ifft(X2.*gCode_fft(:,1));
+y12=ifft(X1.*gCode_fft(:,2));
+y22=ifft(X2.*gCode_fft(:,2));     
+
+% We need to flip the correlation result and shift by one sample to get the
+% correct result
+y11 = circshift(flipud(y11),1);
+y12 = circshift(flipud(y12),1);
+y21 = circshift(flipud(y21),1);
+y22 = circshift(flipud(y22),1);
+
+normalize = true; % FIX ME: replace it by a parameter in p.rx? - EA 27/05/25
+if normalize
+    scaleFactor = codeLen;
+else
+    scaleFactor = 1;                                                                              
 end
 
-% Oversample the probing code to match the sampling rate
-gCode = ([reshape(repmat(gCode(1, :), p.rx.ovsFactor, 1), 1, []); reshape(repmat(gCode(2, :), p.rx.ovsFactor, 1), 1, [])]); 
-
-% Display probing sequence and fiber details
-
-% fprintf('\n*** Rx PROC. INPUTS  Probing:%s  fSymb:%.0fMHz  Ncode:%d symbols (sb%d)  Tcode:%.2fus  BW:%.2fkHz  MaxProbingDist:%.3fkm  EnteredFiberLength:%.1fkm  Signal duration:%.4fs ***\n', ...
-%     p.tx.ProbingMethod, p.tx.fSymb * 1.e-6, p.tx.Ncode, p.tx.seqOrderCst, p.tx.Tcode * 1.e6, 0.5e-3 / p.tx.Tcode, 1.e-3 * maxLengthFactor * (0.5 * p.tx.Tcode * p.fibre.cFiber), 1.e-3 * p.fibre.L, 8 * 2^(p.tx.seqOrderCst) * p.tx.nbCodes / (p.rx.ovsFactor * p.tx.fSymb));
-fprintf('\n*** Rx PROC. INPUTS  Probing:%s  fSymb:%.0fMHz  Ncode:%d symbols (sb%d)  Tcode:%.2fus  BW:%.2fkHz  MaxProbingDist:%.3fkm  EnteredFiberLength:%.1fkm ***\n', ...
-    p.tx.ProbingMethod, p.tx.fSymb * 1.e-6, p.tx.Ncode, p.tx.seqOrderCst, p.tx.Tcode * 1.e6, 0.5e-3 / p.tx.Tcode, 1.e-3 * maxLengthFactor * (0.5 * p.tx.Tcode * p.fibre.cFiber), 1.e-3 * p.fibre.L);
+% Output with adjusted scaling and first codeLen-long part discarded due to
+% possible time aliasing
+out(1,:) = y11(round(offset_ratio*codeLen):end) ./ scaleFactor;
+out(2,:) = y21(round(offset_ratio*codeLen):end) ./ scaleFactor;
+out(3,:) = y12(round(offset_ratio*codeLen):end) ./ scaleFactor;
+out(4,:) = y22(round(offset_ratio*codeLen):end) ./ scaleFactor;
 
 
-% Warning: Check if probing sequence length is compatible with fiber length
-if p.tx.Tcode < (1 / maxLengthFactor) * 2 * p.fibre.L / p.fibre.cFiber || p.tx.Tcode > 1 / (pi * p.tx.dfLaser)
-    fprintf('\nWARNING: Probing sequence (type: %d, order %d) length (%.1fkm) can process fiber length up to %.3fkm (current one is %.1fkm) to avoid spatial aliasing AND shorter than laser coherence length (%.0fkm). Potential inconsistent phase detection!\n\n', ...
-        p.tx.ProbingMethod, p.tx.seqOrderCst, 1.e-3 * p.fibre.cFiber * p.tx.Tcode, 1.e-3 * maxLengthFactor * (0.5 * p.tx.Tcode * p.fibre.cFiber), 1.e-3 * p.fibre.L, 1.e-3 * p.fibre.cFiber / (pi * p.tx.dfLaser));
-end
 
+% FIXME: test and compare this alternative
+% % CD Fast complex correlation derived from FCONV Fast Convolution (spectral domain implementation), called by fcorrCD_PerBlock_4X()
+% % Computes per block the 4 cross-correlations between x(1,:), x(2,:) and h(1,:), h(2,:) 
+% %The input block length is already power of 2. spHseg is the precalculated spectrum of h, same size as the input block. 
+% 
+% X1=fft(conj(xSeg(end:-1:1,1))); % Fast Fourier transform for x(1,:)
+% X2=fft(conj(xSeg(end:-1:1,2))); % Fast Fourier transform for x(2,:)
+% 
+% y11=ifft(X1.*spHseg(:,1)); % Inverse fast Fourier transform of spectral products, no zero padding needed here since already a power of 2 
+% y21=ifft(X2.*spHseg(:,1));
+% y12=ifft(X1.*spHseg(:,2));
+% y22=ifft(X2.*spHseg(:,2));     
+% 
+% out(:,1) = conj(y11(end:-1:Hlen))./Hlen; % Take just the last (length(xSeg)-Hlen+1) elements, in reverse order, and then normalize
+% out(:,2) = conj(y21(end:-1:Hlen))./Hlen;
+% out(:,3) = conj(y12(end:-1:Hlen))./Hlen;
+% out(:,4) = conj(y22(end:-1:Hlen))./Hlen;
