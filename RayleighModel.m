@@ -15,7 +15,7 @@ global Erx; % global variable containing the propagated field
 tStart = tic; % Start timer for the entire process
 tCumul = 0;   % Initialize cumulative time counter
 
-%% Probing
+%% Probing 
 
 % Generate the probing sequence (codes for transmission)
 [gCode, p] = genProbingSequence(p);

@@ -8,7 +8,7 @@ end
 U_i = single(NaN(2,2*p.fibre.nbSegments)); %Output array storing the 2*2 Jones matrix of each segment
 for n=1:p.fibre.nbSegments 
     expjBeta = exp(1j*(p.fibre.evolBetaTab(n))); 
-    sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n)); %sinRot = sin(0); cosRot = cos(0);%
+    sinRot = sin(p.fibre.rotPolarTab(n)); cosRot = cos(p.fibre.rotPolarTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n));%sinRot = sin(0); cosRot = cos(0);%sinRot = sin(p.fibre.evolThetaTab(n)); cosRot = cos(p.fibre.evolThetaTab(n)); %sinRot = sin(0); cosRot = cos(0);%
     U_i(:,1+2*(n-1):2*n) = [cosRot sinRot ; -sinRot cosRot] * [expjBeta 0 ; 0 conj(expjBeta)]*[cosRot -sinRot ; sinRot cosRot];%Calculate matrix U_forw for the current fiber segment
 end
 
@@ -24,7 +24,7 @@ end
 HiEvent = single(NaN(2,2*p.fibre.nbSegments)); %Output array storing the 2*2 Jones matrix of each segment
 if p.fibre.polar
     for n=1:p.fibre.nbSegments        
-        HiEvent(:,1+2*(n-1):2*n) =p.fibre.Ei(n)*p.fibre.Ai(n)*Hi_forward(:,1+2*(n-1):2*n).'* Hi_forward(:,1+2*(n-1):2*n); %Calculate round-trip matrix for the current fiber segment
+        HiEvent(:,1+2*(n-1):2*n) = p.fibre.Ei(n)*p.fibre.Ai(n)*Hi_forward(:,1+2*(n-1):2*n).'* Hi_forward(:,1+2*(n-1):2*n); %Calculate round-trip matrix for the current fiber segment
     end
 else
     for n=1:p.fibre.nbSegments

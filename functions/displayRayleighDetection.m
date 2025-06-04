@@ -854,17 +854,17 @@ if p.displ.polarBirefringence
     x_axis_meters = (1:p.rx.nbOvsSelectedReflectors-1) * 10.25; % Convert reflector indices to meters
     p.pola.stdBirefringenceSelect = std(abs(p.pola.birefringenceJonesMatricesSelect(1, :, 1:end)), 0, 3); % Compute std across time (3rd dimension)
     plot(x_axis_meters, p.pola.stdBirefringenceSelect, 'b-o');
-    %title('Standard Deviation of Birefringence Across Time for selected reflectors only');
+    title('Standard Deviation of Estimated Birefringence Across Time for selected reflectors only');
     xlabel('Distance (meters)', 'FontSize', 14);
-    ylabel('Standard Deviation of Birefringence (radians)','FontSize', 14);
+    ylabel('Standard Deviation of estimated Birefringence (radians)','FontSize', 14);
     grid on;
 
     %standard deviation of generated birefringence, on all segments (not just selected)
     figure;
     x_axis_meters = (1:p.rx.nbOvsReflectors-1) * 1.025;
-    p.pola.stdBirefringenceGen = std(p.pola.birefringenceJonesMatricesGen(1, :, 1:end), 0, 3); % Compute std across time (3rd dimension)
+    p.pola.stdBirefringenceGen = std(abs(p.pola.birefringenceJonesMatricesGen(1, :, 1:end)), 0, 3); % Compute std across time (3rd dimension)
     plot(x_axis_meters, p.pola.stdBirefringenceGen, 'b-o');
-    title('Standard Deviation of Birefringence Across Time for selected reflectors only');
+    title('Standard Deviation of Birefringence Across Time of generated matrices');
     xlabel('Distance (meters)', 'FontSize', 14);
     ylabel('Standard Deviation of Birefringence (radians)', 'FontSize', 14);
     grid on;

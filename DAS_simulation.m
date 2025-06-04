@@ -61,7 +61,7 @@ p.tx.ProbingMethod = 'Golay';      % Probing sequence type
 p.tx.seqOrderCst = 14;             % Sequence order for Golay codes
 p.tx.nbCodes = 100;                % Number of transmitted codewords
 p.tx.dead_zone = 0;
-p.tx.dfLaser = 100;                  % Laser linewidth [Hz]
+p.tx.dfLaser = 100;               % Laser linewidth [Hz]
 p.tx.lasernoise_on = true;        % Add laser noise at the LO
 p.tx.ampli_on = true;             % Enable EDFA amplifier
 
