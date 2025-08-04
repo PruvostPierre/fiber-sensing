@@ -1,0 +1,16 @@
+# Ignorer tout le dossier DATA
+DATA/
+
+# Fichiers temporaires MATLAB
+*.asv
+*.m~
+*.fig~
+*.autosave
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+DATA/Config12_Test8/*.mat
+DATA/
+DATA/
+DATA/

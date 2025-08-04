@@ -1,0 +1,65 @@
+function p = getMuellerParam(p,JonesMatTab3D)
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% GETMUELLERPARAM get polarization information from Jones matrix
+% Stokes parameters evolution, differential polar are stored il p.pola
+%
+% Authors: 
+% Original code by S. Guerrier, C. Dorize & E. Awwad - 2022
+% Modified version by E. Awwad - 2024 elie.awwad@telecom-paris.fr
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+RxCorrXX = p.HiTab(1,1:p.rx.nbOvsSelectedReflectors*p.rx.nbDetectedCodes);
+RxCorrXY = p.HiTab(2,1:p.rx.nbOvsSelectedReflectors*p.rx.nbDetectedCodes);
+
+A = [1 0 0 1;1 0 0 -1;0 1 1 0;0 -1j 1j 0];
+    time_line = p.rx.nbOvsSelectedReflectors*p.rx.nbDetectedCodes;% size(JonesMatTab3D,3); %time_line/sizeTab = nbDetectedCodes
+    Mi = zeros(4,4,time_line);
+    p.pola.S0_t = zeros(1,time_line);
+    for n=1:time_line
+        Mi(:,:,n) = A*kron(JonesMatTab3D(:,:,n), conj(JonesMatTab3D(:,:,n)))/A; %Jones to Mueller transformation
+        p.pola.S0_t(n) = Mi(1,1,n); %see evolution of total intensity
+        Mi(:,:,n) = (1/Mi(1,1,n))*Mi(:,:,n); %normalisation (s0 = 1)
+    end
+    % Evolution of Stokes parameters
+    Stokes_t = zeros(3, time_line); %S0 to 1, here S=(s1,s2,s3)
+    p.pola.S1_t = zeros(1,time_line); p.pola.S2_t = zeros(1,time_line); p.pola.S3_t = zeros(1,time_line);
+    for n=1:time_line
+        St = Mi(:,:,n)*[1;0;0;-1];%circular left hand; [1;0;1;0] ;%linearly 45deg %[1 1 0 0]linearly polarized input (1/sqrt(2))*
+        Stokes_t(:,n) = St(2:end);%Mi(2:4,2:4,n)*[1;0;0];
+        p.pola.S1_t(n)=St(2); p.pola.S2_t(n)=St(3); p.pola.S3_t(n)=St(4);
+    end
+    
+    p.pola.S0_t = single(reshape(p.pola.S0_t, [p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]));
+    
+    % Differential pola / Standard deviation of SOP
+    p.pola.diffPolaS1 = p.pola.S1_t; p.pola.diffPolaS1 = [Stokes_t(1,1), diff(p.pola.diffPolaS1)];
+    p.pola.diffPolaS1 = single(reshape(p.pola.diffPolaS1,[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]));%Reshape vector to get reflectors per row and codes per column
+    p.pola.diffPolaS2 = p.pola.S2_t; p.pola.diffPolaS2 = [Stokes_t(2,1), diff(p.pola.diffPolaS2)];
+    p.pola.diffPolaS2 = single(reshape(p.pola.diffPolaS2,[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]));%Reshape vector to get reflectors per row and codes per column
+    p.pola.diffPolaS3 = p.pola.S3_t; p.pola.diffPolaS3 = [Stokes_t(3,1), diff(p.pola.diffPolaS3)];
+    p.pola.diffPolaS3 = single(reshape(p.pola.diffPolaS3,[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]));%Reshape vector to get reflectors per row and codes per column
+    for n=1:p.rx.nbOvsSelectedReflectors
+        p.pola.diffPolaS1(n,:) = real(ifft(p.rx.spWeightingTab.*fft(p.pola.diffPolaS1(n,:)))); %with HP filtering
+        p.pola.diffPolaS2(n,:) = real(ifft(p.rx.spWeightingTab.*fft(p.pola.diffPolaS2(n,:)))); %with HP filtering
+        p.pola.diffPolaS3(n,:) = real(ifft(p.rx.spWeightingTab.*fft(p.pola.diffPolaS3(n,:)))); %with HP filtering
+    end
+    %p.pola.globalDiff;
+    p.pola.stddiffPolaS1 = single(std(p.pola.diffPolaS1.'));
+    p.pola.stddiffPolaS2 = single(std(p.pola.diffPolaS2.'));
+    p.pola.stddiffPolaS3 = single(std(p.pola.diffPolaS3.'));
+    
+    % ellipticity / fast axis / retardance
+    p.pola.DOP = 0.5*reshape(sqrt(sum(Stokes_t.^2, 1)),[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]); %sqrt(Stokes_t(1,:).^2+Stokes_t(2,:).^2+Stokes_t(3,:).^2)
+    p.pola.eta = reshape(0.5*asin(Stokes_t(3,:)),[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]); %sin(2eta) = s3/s0
+    p.pola.psy = reshape(0.5*atan(Stokes_t(2,:)./Stokes_t(1,:)),[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]); % tan(2psy)=s2/s1
+    p.pola.ellipticity = reshape(tan(p.pola.eta),[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]); %ellipticity e=minoraxis/majoraxis=tan(eta)
+    p.pola.deltaPhi = reshape(angle(RxCorrXX)-angle(RxCorrXY),[p.rx.nbOvsSelectedReflectors,p.rx.nbDetectedCodes]);
+    p.pola.deltaPhi = getAnglePlusMinusPiOver2((p.pola.deltaPhi).').';%Get differential phase between the selected reflectors
+    %p.pola.deltaPhi = (unwrap(2*p.pola.deltaPhi.')/2).';%Unwrap to get rid of PI phase jumps between reflectors
+    %p.pola.deltaPhi = std(p.pola.deltaPhi.');%Differential phase std of the selected backscatters after HP filtering (Edges in time ignored) %(:,round(0.1*p.rx.nbDetectedCodes):round(0.9*p.rx.nbDetectedCodes))
+    
+    p.pola.delta = p.pola.deltaPhi./sqrt(tan(2*p.pola.eta).^2+1);%see Rogers 1981 AppendixA
+    p.pola.rho = 0.5*p.pola.delta.*tan(2*p.pola.eta); %Rogers 1981 Appendix A
+end
+
